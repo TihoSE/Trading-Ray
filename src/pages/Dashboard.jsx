@@ -46,7 +46,7 @@ export default function Dashboard() {
 
       {status === 'loading' ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 5 }).map((_, index) => (
+          {Array.from({ length: POPULAR_SYMBOLS.length }).map((_, index) => (
             <div key={index} className="h-48 animate-pulse rounded-2xl border border-line bg-panel" />
           ))}
         </div>

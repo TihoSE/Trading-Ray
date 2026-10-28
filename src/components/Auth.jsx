@@ -67,18 +67,20 @@ export default function Auth() {
     setForm((current) => ({ ...current, password: '', confirmPassword: '' }))
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
     const nextErrors = validate({ mode, ...form })
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
     setSubmitting(true)
+    setFormError('')
     try {
       if (isLogin) {
-        login(form.email, form.password)
+        await login(form.email, form.password)
       } else {
-        register(form.name, form.email, form.password)
+        const notice = await register(form.name, form.email, form.password)
+        if (notice) setFormError(notice)
       }
     } catch (error) {
       setFormError(error.message)
@@ -95,7 +97,7 @@ export default function Auth() {
             <LineChart size={20} />
           </div>
           <div>
-            <p className="text-sm font-semibold">Aether Markets</p>
+            <p className="text-sm font-semibold">Trading-Ray</p>
             <p className="text-xs text-muted">{isLogin ? 'Sign in to the desk' : 'Create your trading desk'}</p>
           </div>
         </div>

@@ -30,8 +30,8 @@ export default function Sidebar({ open, onClose }) {
               <LineChart size={20} />
             </div>
             <div>
-              <p className="text-sm font-semibold tracking-wide text-ink">Aether Markets</p>
-              <p className="text-xs text-muted">Live tape · dark desk</p>
+              <p className="text-sm font-semibold tracking-wide text-ink">Trading-Ray</p>
+              <p className="text-xs text-muted">Live Stock Dashboard</p>
             </div>
           </div>
           <button
