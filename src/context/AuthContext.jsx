@@ -1,76 +1,78 @@
-import { createContext, useContext, useMemo, useState } from 'react'
-
-const USERS_KEY = 'aether_users'
-const SESSION_KEY = 'aether_session'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
-function readJson(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch {
-    return fallback
+function mapUser(authUser) {
+  if (!authUser) return null
+
+  const metadata = authUser.user_metadata ?? {}
+  const name = metadata.name || metadata.full_name || authUser.email?.split('@')[0] || 'Trader'
+
+  return {
+    id: authUser.id,
+    email: authUser.email ?? '',
+    name,
   }
 }
 
-function publicUser(record) {
-  return { email: record.email, name: record.name }
-}
-
-function readSession() {
-  const session = readJson(SESSION_KEY, null)
-  if (!session?.email || !session?.name) return null
-  return { email: session.email, name: session.name }
-}
-
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readSession)
+  const [user, setUser] = useState(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return
+      setUser(mapUser(data.session?.user ?? null))
+      setReady(true)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(mapUser(session?.user ?? null))
+      setReady(true)
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const value = useMemo(
     () => ({
       user,
-      login(email, password) {
-        const users = readJson(USERS_KEY, [])
-        const match = users.find(
-          (entry) =>
-            entry.email.toLowerCase() === email.trim().toLowerCase() &&
-            entry.password === password,
-        )
-
-        if (!match) {
-          throw new Error('Invalid email or password.')
-        }
-
-        const session = publicUser(match)
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-        setUser(session)
-      },
-      register(name, email, password) {
-        const users = readJson(USERS_KEY, [])
-        const normalizedEmail = email.trim().toLowerCase()
-
-        if (users.some((entry) => entry.email.toLowerCase() === normalizedEmail)) {
-          throw new Error('An account with this email already exists.')
-        }
-
-        const record = {
-          name: name.trim(),
-          email: normalizedEmail,
+      ready,
+      async login(email, password) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
           password,
-        }
-
-        localStorage.setItem(USERS_KEY, JSON.stringify([...users, record]))
-        const session = publicUser(record)
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-        setUser(session)
+        })
+        if (error) throw new Error(error.message)
       },
-      logout() {
-        localStorage.removeItem(SESSION_KEY)
-        setUser(null)
+      async register(name, email, password) {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { name: name.trim() },
+          },
+        })
+        if (error) throw new Error(error.message)
+        if (!data.session) {
+          return 'Account created. Confirm your email, then log in.'
+        }
+        return null
+      },
+      async logout() {
+        const { error } = await supabase.auth.signOut()
+        if (error) throw new Error(error.message)
       },
     }),
-    [user],
+    [user, ready],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

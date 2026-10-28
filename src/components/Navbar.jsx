@@ -43,7 +43,9 @@ export default function Navbar({ onMenuClick }) {
           </div>
           <button
             type="button"
-            onClick={logout}
+            onClick={() => {
+              logout()
+            }}
             className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/5"
           >
             <LogOut size={14} />

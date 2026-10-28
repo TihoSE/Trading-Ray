@@ -9,8 +9,16 @@ import Sidebar from './Sidebar'
 import StockDetail from './StockDetail'
 
 export default function Layout() {
-  const { user } = useAuth()
+  const { user, ready } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  if (!ready) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#070b14] text-sm text-muted">
+        Restoring session…
+      </div>
+    )
+  }
 
   if (!user) {
     return <Auth />

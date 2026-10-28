@@ -7,15 +7,16 @@ export const POPULAR_SYMBOLS = [
   { symbol: 'AAPL', name: 'Apple' },
   { symbol: 'MSFT', name: 'Microsoft' },
   { symbol: 'TSLA', name: 'Tesla' },
+  { symbol: 'GOOGL', name: 'Alphabet' },
+  { symbol: 'AMZN', name: 'Amazon' },
+  { symbol: 'META', name: 'Meta Platforms' },
+  { symbol: 'AMD', name: 'Advanced Micro Devices' },
+  { symbol: 'NFLX', name: 'Netflix' },
+  { symbol: 'COIN', name: 'Coinbase' },
 ]
 
 export const SYMBOL_DIRECTORY = [
   ...POPULAR_SYMBOLS,
-  { symbol: 'AMD', name: 'Advanced Micro Devices' },
-  { symbol: 'AMZN', name: 'Amazon' },
-  { symbol: 'GOOGL', name: 'Alphabet' },
-  { symbol: 'META', name: 'Meta Platforms' },
-  { symbol: 'NFLX', name: 'Netflix' },
   { symbol: 'INTC', name: 'Intel' },
   { symbol: 'QQQ', name: 'Nasdaq 100 ETF' },
 ]
@@ -31,6 +32,7 @@ const MOCK_QUOTES = {
   GOOGL: { c: 178.36, d: 2.24, dp: 1.27, h: 179.9, l: 175.4, o: 176.1, pc: 176.12 },
   META: { c: 612.08, d: 5.41, dp: 0.89, h: 616.2, l: 604.3, o: 607.5, pc: 606.67 },
   NFLX: { c: 891.2, d: -8.14, dp: -0.91, h: 905.0, l: 886.4, o: 898.1, pc: 899.34 },
+  COIN: { c: 248.16, d: 7.22, dp: 3.0, h: 252.4, l: 239.8, o: 241.5, pc: 240.94 },
   INTC: { c: 23.48, d: 0.31, dp: 1.34, h: 23.9, l: 22.88, o: 23.05, pc: 23.17 },
   QQQ: { c: 512.66, d: 1.02, dp: 0.2, h: 514.8, l: 509.4, o: 511.2, pc: 511.64 },
 }
