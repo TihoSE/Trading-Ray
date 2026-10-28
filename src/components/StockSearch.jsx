@@ -3,6 +3,7 @@ import { Loader2, Plus, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useMarket } from '../context/MarketContext'
 import { QuoteNotFoundError, fetchSearchQuote, searchSymbols } from '../services/finnhub'
+import WatchButton from './WatchButton'
 
 function formatPrice(value) {
   if (typeof value !== 'number') return '—'
@@ -153,7 +154,8 @@ export default function StockSearch() {
                     </span>
                   </p>
                 </button>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <WatchButton symbol={result.symbol} />
                   <button
                     type="button"
                     onClick={() => handleDetails(result)}
@@ -178,15 +180,16 @@ export default function StockSearch() {
           {suggestions.length > 0 ? (
             <ul className="max-h-72 overflow-auto py-1">
               {suggestions.map((item) => (
-                <li key={item.symbol}>
+                <li key={item.symbol} className="flex items-center pr-2 hover:bg-white/5">
                   <button
                     type="button"
                     onClick={() => loadQuote(item.symbol)}
-                    className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-white/5"
+                    className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-2.5 text-left text-sm"
                   >
                     <span className="font-semibold">{item.symbol}</span>
-                    <span className="truncate pl-4 text-xs text-muted">{item.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted">{item.name}</span>
                   </button>
+                  <WatchButton symbol={item.symbol} />
                 </li>
               ))}
             </ul>

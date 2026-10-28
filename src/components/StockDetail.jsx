@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useMarket } from '../context/MarketContext'
 import StockCard from './StockCard'
+import StockChart from './StockChart'
 
 function formatPrice(value) {
   return value.toLocaleString('en-US', {
@@ -18,7 +19,7 @@ export default function StockDetail() {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 px-4">
       <button type="button" className="absolute inset-0" aria-label="Close details" onClick={closeDetail} />
-      <div className="relative z-10 w-full max-w-lg rounded-3xl border border-line bg-[#070b14] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-line bg-[#070b14] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.5)]">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-sm font-semibold">Quote details</p>
           <button
@@ -31,6 +32,7 @@ export default function StockDetail() {
           </button>
         </div>
         <StockCard quote={detail} name={detail.name} />
+        <StockChart quote={detail} />
         <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <div className="rounded-xl border border-line bg-panel p-3">
             <dt className="text-xs text-muted">Open</dt>
