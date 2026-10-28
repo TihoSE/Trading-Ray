@@ -185,3 +185,36 @@ export async function searchSymbols(query) {
     return local
   }
 }
+
+function symbolSeed(symbol) {
+  return [...symbol].reduce((sum, char) => sum + char.charCodeAt(0), 0)
+}
+
+export function simulateHistory(quote, days = 30) {
+  const ticker = quote.symbol.toUpperCase()
+  const seed = symbolSeed(ticker)
+  const end = quote.current
+  const direction = quote.change >= 0 ? 1 : -1
+  const span = Math.max(Math.abs(quote.change) * days * 0.35, end * 0.04)
+  const points = []
+
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const date = new Date()
+    date.setHours(16, 0, 0, 0)
+    date.setDate(date.getDate() - offset)
+
+    const progress = (days - 1 - offset) / Math.max(days - 1, 1)
+    const wave = Math.sin((seed / 12 + offset) * 0.85) * span * 0.35
+    const ripple = Math.cos((seed / 7 + offset) * 1.4) * span * 0.18
+    let price = end - direction * span * (1 - progress) + wave + ripple
+    if (offset === 0) price = end
+
+    points.push({
+      date: date.toISOString().slice(0, 10),
+      label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      price: +Math.max(price, 0.01).toFixed(2),
+    })
+  }
+
+  return points
+}

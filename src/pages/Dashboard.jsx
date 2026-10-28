@@ -53,14 +53,12 @@ export default function Dashboard() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map((quote) => (
-            <button
+            <StockCard
               key={quote.symbol}
-              type="button"
-              className="text-left"
-              onClick={() => openDetail(quote)}
-            >
-              <StockCard quote={quote} name={quote.name} />
-            </button>
+              quote={quote}
+              name={quote.name}
+              onOpen={openDetail}
+            />
           ))}
         </div>
       )}

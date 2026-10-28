@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { MarketProvider } from '../context/MarketContext'
+import { WatchlistProvider } from '../context/WatchlistContext'
 import Auth from './Auth'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
@@ -17,16 +18,18 @@ export default function Layout() {
 
   return (
     <MarketProvider>
-      <div className="min-h-screen bg-[#070b14] lg:grid lg:grid-cols-[18rem_1fr]">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="flex min-w-0 flex-col">
-          <Navbar onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 px-4 py-6 sm:px-6">
-            <Outlet />
-          </main>
+      <WatchlistProvider>
+        <div className="min-h-screen bg-[#070b14] lg:grid lg:grid-cols-[18rem_1fr]">
+          <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <div className="flex min-w-0 flex-col">
+            <Navbar onMenuClick={() => setSidebarOpen(true)} />
+            <main className="flex-1 px-4 py-6 sm:px-6">
+              <Outlet />
+            </main>
+          </div>
         </div>
-      </div>
-      <StockDetail />
+        <StockDetail />
+      </WatchlistProvider>
     </MarketProvider>
   )
 }
