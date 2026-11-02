@@ -19,7 +19,7 @@ Dark stock dashboard for searching tickers, watching a personal list, and openin
 - Per-account watchlist stored in Supabase
 - Quote detail with 1H, 1D, 1W, and 1M charts
 - Sample prices and candle series when Finnhub does not return data
-- Admin-only settings. In production the Finnhub key comes from `VITE_FINNHUB_API_KEY`
+- Admin-only settings. Live quotes go through `/api/finnhub`; the key stays in `FINNHUB_SECRET_KEY`
 
 ## Run locally
 
@@ -31,9 +31,9 @@ npm run dev
 Copy `.env.example` to `.env` and set:
 
 - `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for auth and the watchlist
-- `VITE_FINNHUB_API_KEY` for live quotes, search, and candles
+- `FINNHUB_SECRET_KEY` for live quotes, search, and candles
 
-On Vercel, set the same `VITE_` variables in the project environment. Production reads them through `import.meta.env`. A local Settings override is only used while running the Vite dev server.
+On Vercel, set the same variables in the project environment. The `VITE_` values are inlined at build time. `FINNHUB_SECRET_KEY` is read only by the serverless function and is not shipped to the browser.
 
 `.env` and `.vercel` are gitignored. `.env.example` stays in the repo without secrets.
 

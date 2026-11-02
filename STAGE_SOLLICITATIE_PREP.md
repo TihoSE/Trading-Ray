@@ -24,15 +24,15 @@ De admin-rol komt uit `profiles`, niet uit `user_metadata`. Metadata kan de gebr
 
 ### 3. Waarom Vite en geen Next.js, en wat betekent dat voor Vercel?
 
-React is de UI-library. Vite is de dev-server en de bundler. `vite.config.js` heeft alleen de React-plugin en Tailwind 4. `vite build` maakt statische bestanden; Vercel serveert `dist`. Er is geen Node-server die requests afhandelt.
+React is de UI-library. Vite is de dev-server en de bundler. `vite.config.js` heeft de React-plugin, Tailwind 4, en in dev dezelfde `/api/finnhub`-route als Vercel. `vite build` maakt statische bestanden; Vercel serveert `dist` plus de serverless function `api/finnhub.js`.
 
-Daarom staan secrets die de browser nodig heeft in `VITE_`-variabelen. Vite zet `import.meta.env.VITE_*` vast op het moment van bouwen. Een latere wijziging in het Vercel-dashboard doet niets tot de volgende deploy. Ontbreekt `VITE_SUPABASE_URL` of de anon key bij de build, dan rendert `main.jsx` de app niet en toont alleen de configuratiefout.
+Secrets die de browser nodig heeft staan in `VITE_`-variabelen. Vite zet `import.meta.env.VITE_*` vast op het moment van bouwen. Een latere wijziging in het Vercel-dashboard doet niets tot de volgende deploy. Ontbreekt `VITE_SUPABASE_URL` of de anon key bij de build, dan rendert `main.jsx` de app niet en toont alleen de configuratiefout.
 
-In productie leest `getApiKey` alleen die ingebouwde Finnhub-key. `localStorage` geldt alleen op de dev-server, zodat een bezoeker van de live site de key van het project niet kan vervangen.
+De Finnhub-sleutel heet `FINNHUB_SECRET_KEY` en heeft geen `VITE_`-prefix. Alleen `api/finnhub.js` leest hem en zet hem op het verzoek naar Finnhub. De browser roept `/api/finnhub` aan en krijgt de koers terug, zonder sleutel.
 
 ### 4. Hoe ga je om met Finnhub rate limits, en waarom zie ik bij SPY geen holdings?
 
-Er is geen gedeelde limiter en geen proxy. De vrije Finnhub-quota is ongeveer 60 calls per minuut. Het enige dat ik throttle is zoeken: `StockSearch` wacht 220 ms na de laatste toetsaanslag en cancelt de vorige timer. Het dashboard doet daarnaast één quotecall per kaart. Dat kan de quota alsnog raken; dan valt `fetchQuote` terug op sample data, behalve bij een zoekresultaat, waar een verzonnen prijs erger is dan een fout.
+De browser praat niet rechtstreeks met Finnhub. `/api/finnhub` proxyt de toegestane endpoints en geeft status 429 en `Retry-After` door. De vrije quota is ongeveer 60 calls per minuut. Het enige dat ik in de client throttle is zoeken: `StockSearch` wacht 220 ms na de laatste toetsaanslag en cancelt de vorige timer. Het dashboard doet daarnaast één quotecall per kaart. Bij een rate limit valt `fetchQuote` terug op sample data, behalve bij een zoekresultaat, waar een verzonnen prijs erger is dan een fout.
 
 `/etf/holdings` is een apart, betaald endpoint. Een 401 of 403 wordt `HoldingsAccessError` met de tekst dat holdings niet in het huidige data-plan zitten. Ik vul dan geen nepgewichten in, want die lijken op echte fondssamenstelling. De tabel staat wel klaar: top 10 op gewicht, of alles.
 

@@ -1,20 +1,13 @@
 /**
- * Market data is requested from the browser. There is no backend proxy and no
- * shared rate-limit bucket. Finnhub's free quota is about 60 calls a minute.
- * The only throttle in this app is the 220ms search debounce in StockSearch,
- * which collapses keystrokes; opening a full dashboard still fires one quote
- * request per card. Failures fall back to sample quotes so the UI stays usable.
+ * Market data goes through /api/finnhub. That Vercel function holds
+ * FINNHUB_SECRET_KEY; this file never sends a token. Finnhub's free quota is
+ * about 60 calls a minute. The only throttle here is the 220ms search debounce
+ * in StockSearch. A 429 becomes RateLimitError. Quote failures on the dashboard
+ * still fall back to sample data. Search does not invent a price.
  *
  * `/etf/holdings` is a separate, paid resource. A 401/403 becomes
  * HoldingsAccessError. Inventing weights would look like real fund data.
- *
- * In production `getApiKey` ignores localStorage. A visitor of the deployed
- * site must not be able to replace the key the host configured.
  */
-const QUOTE_URL = 'https://finnhub.io/api/v1/quote'
-const SEARCH_URL = 'https://finnhub.io/api/v1/search'
-const CANDLE_URL = 'https://finnhub.io/api/v1/stock/candle'
-const HOLDINGS_URL = 'https://finnhub.io/api/v1/etf/holdings'
 
 export const CANDLE_TIMEFRAMES = [
   {
@@ -94,6 +87,14 @@ export class HoldingsAccessError extends Error {
   }
 }
 
+export class RateLimitError extends Error {
+  constructor() {
+    super('Market data rate limit reached. Try again in a minute.')
+    this.name = 'RateLimitError'
+    this.status = 429
+  }
+}
+
 export function isEtfQuote(quote) {
   if (!quote) return false
   const type = String(quote.type || '').toUpperCase()
@@ -109,13 +110,27 @@ export class QuoteNotFoundError extends Error {
   }
 }
 
-/** Dev may use a browser-stored key. Production builds only see the env key Vite inlined. */
-export function getApiKey() {
-  const envKey = import.meta.env.VITE_FINNHUB_API_KEY?.trim() || ''
-  if (import.meta.env.PROD) return envKey
+async function requestMarket(endpoint, params) {
+  const search = new URLSearchParams({ endpoint })
+  for (const [key, value] of Object.entries(params)) {
+    if (value != null && value !== '') search.set(key, String(value))
+  }
 
-  const stored = localStorage.getItem('finnhub_api_key')?.trim()
-  return stored || envKey
+  const response = await fetch(`/api/finnhub?${search}`)
+  let data = null
+  try {
+    data = await response.json()
+  } catch {
+    data = null
+  }
+  return { response, data }
+}
+
+function throwIfRateLimited(response, data) {
+  const message = String(data?.error || '')
+  if (response.status === 429 || /rate limit|api limit|too many/i.test(message)) {
+    throw new RateLimitError()
+  }
 }
 
 export function lookupName(symbol) {
@@ -174,34 +189,16 @@ function isEmptyQuote(data) {
  */
 export async function fetchQuote(symbol, { fallbackMock = true } = {}) {
   const ticker = symbol.trim().toUpperCase()
-  const token = getApiKey()
-
-  if (!token) {
-    const mocked = mockQuote(ticker)
-    if (mocked) return mocked
-    if (fallbackMock) {
-      throw new QuoteNotFoundError(ticker)
-    }
-    throw new QuoteNotFoundError(ticker)
-  }
 
   try {
-    const response = await fetch(
-      `${QUOTE_URL}?symbol=${encodeURIComponent(ticker)}&token=${encodeURIComponent(token)}`,
-    )
-
-    if (!response.ok) {
-      throw new Error(`Quote request failed (${response.status})`)
-    }
-
-    const data = await response.json()
-    if (isEmptyQuote(data)) {
-      throw new QuoteNotFoundError(ticker)
-    }
-
+    const { response, data } = await requestMarket('quote', { symbol: ticker })
+    throwIfRateLimited(response, data)
+    if (!response.ok) throw new Error(`Quote request failed (${response.status})`)
+    if (isEmptyQuote(data)) throw new QuoteNotFoundError(ticker)
     return normalizeQuote(ticker, data)
   } catch (error) {
     if (error instanceof QuoteNotFoundError) throw error
+    if (error instanceof RateLimitError && !fallbackMock) throw error
     if (fallbackMock) {
       const mocked = mockQuote(ticker)
       if (mocked) return mocked
@@ -253,8 +250,6 @@ function stockHoldings(holdings) {
  */
 export async function fetchEtfHoldings(symbol) {
   const ticker = symbol.trim().toUpperCase()
-  const token = getApiKey()
-  if (!token) throw new HoldingsAccessError()
 
   const collected = []
   let atDate = ''
@@ -262,14 +257,11 @@ export async function fetchEtfHoldings(symbol) {
 
   for (let page = 0; page < 20; page += 1) {
     const skip = collected.length
-    const response = await fetch(
-      `${HOLDINGS_URL}?symbol=${encodeURIComponent(ticker)}&skip=${skip}&token=${encodeURIComponent(token)}`,
-    )
+    const { response, data } = await requestMarket('holdings', { symbol: ticker, skip })
 
+    throwIfRateLimited(response, data)
     if (response.status === 401 || response.status === 403) throw new HoldingsAccessError()
     if (!response.ok) throw new Error('Unable to load holdings.')
-
-    const data = await response.json()
     if (data?.error) {
       if (/access|permission|forbidden/i.test(String(data.error))) throw new HoldingsAccessError()
       throw new Error('Unable to load holdings.')
@@ -317,23 +309,16 @@ function localSearch(query) {
 
 /**
  * Company-name search. Remote hits keep Finnhub's relevance order; an exact
- * ticker is moved to the front. Without a key, only the small local directory
- * is searched.
+ * ticker is moved to the front. A failed or rate-limited lookup keeps the
+ * small local directory instead of showing an empty box.
  */
 export async function searchSymbols(query) {
   const needle = query.trim()
   const local = localSearch(needle)
-  const token = getApiKey()
-
-  if (!token) return local
 
   try {
-    const response = await fetch(
-      `${SEARCH_URL}?q=${encodeURIComponent(needle)}&token=${encodeURIComponent(token)}`,
-    )
-    if (!response.ok) return local
-
-    const data = await response.json()
+    const { response, data } = await requestMarket('search', { q: needle })
+    if (response.status === 429 || !response.ok) return local
     const remote = (data.result ?? [])
       .filter((item) => ['Common Stock', 'ETF', 'ADR', 'ETP'].includes(item.type) || !item.type)
       .map((item) => ({
@@ -433,22 +418,20 @@ function candlesFromPayload(payload, timeframe) {
 export async function fetchCandleSeries(quote, timeframe = '1D') {
   const config = getCandleTimeframe(timeframe)
   const mocked = () => ({ points: simulateCandles(quote, config.id), source: 'mock' })
-  const token = getApiKey()
-
-  if (!token) return mocked()
-
   const to = Math.floor(Date.now() / 1000)
   const from = to - config.seconds
 
   try {
-    const response = await fetch(
-      `${CANDLE_URL}?symbol=${encodeURIComponent(quote.symbol)}&resolution=${encodeURIComponent(config.resolution)}&from=${from}&to=${to}&token=${encodeURIComponent(token)}`,
-    )
+    const { response, data } = await requestMarket('candle', {
+      symbol: quote.symbol,
+      resolution: config.resolution,
+      from,
+      to,
+    })
 
-    if (!response.ok) return mocked()
+    if (response.status === 429 || !response.ok) return mocked()
 
-    const payload = await response.json()
-    const points = candlesFromPayload(payload, config.id)
+    const points = candlesFromPayload(data, config.id)
     if (!points?.length) return mocked()
 
     return { points, source: 'live' }

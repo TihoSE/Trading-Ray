@@ -166,15 +166,9 @@ export const messages = {
 
     'settings.kicker': 'Preferences',
     'settings.title': 'Settings',
-    'settings.adminOnly': 'Only an admin can view or change the market data key.',
+    'settings.adminOnly': 'Only an admin can view how market data is configured.',
     'settings.prod':
-      'Live quotes use the market data key configured for this deployment. This deployment does not read or store a key in the browser.',
-    'settings.devHint':
-      'Store a market data key locally for development. If the key is missing or the request fails, the dashboard falls back to sample quotes.',
-    'settings.key': 'Market data key',
-    'settings.placeholder': 'Optional · falls back to mock data',
-    'settings.save': 'Save key',
-    'settings.saved': 'Saved. Reload the dashboard to fetch live quotes.',
+      'Live quotes are requested through this site. The market data key stays on the server and is not stored in the browser. If the data provider rate-limits the site, quotes fall back to sample data.',
   },
   nl: {
     'lang.label': 'Taal',
@@ -344,15 +338,9 @@ export const messages = {
 
     'settings.kicker': 'Voorkeuren',
     'settings.title': 'Instellingen',
-    'settings.adminOnly': 'Alleen een beheerder kan de marktdatasleutel bekijken of wijzigen.',
+    'settings.adminOnly': 'Alleen een beheerder kan zien hoe de marktdata is ingesteld.',
     'settings.prod':
-      'Live koersen gebruiken de marktdatasleutel van deze site. Deze site leest of bewaart geen sleutel in de browser.',
-    'settings.devHint':
-      'Bewaar een marktdatasleutel lokaal voor development. Ontbreekt de sleutel of mislukt het verzoek, dan valt het dashboard terug op voorbeeldkoersen.',
-    'settings.key': 'Marktdatasleutel',
-    'settings.placeholder': 'Optioneel · valt terug op voorbeelddata',
-    'settings.save': 'Sleutel opslaan',
-    'settings.saved': 'Opgeslagen. Herlaad het dashboard voor live koersen.',
+      'Live koersen lopen via deze site. De marktdatasleutel blijft op de server en wordt niet in de browser bewaard. Bij een rate limit vallen koersen terug op voorbeelddata.',
   },
 }
 
