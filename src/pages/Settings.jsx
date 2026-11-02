@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { getApiKey } from '../services/finnhub'
 
 function ApiKeyForm() {
-  const [key, setKey] = useState(() => getApiKey())
+  const [key, setKey] = useState(() => (import.meta.env.PROD ? '' : getApiKey()))
   const [saved, setSaved] = useState(false)
 
   function handleSave(event) {
@@ -17,12 +17,26 @@ function ApiKeyForm() {
     window.setTimeout(() => setSaved(false), 1800)
   }
 
+  if (import.meta.env.PROD) {
+    return (
+      <section className="max-w-xl">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
+        <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
+        <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">
+          Live quotes and candles use the Finnhub key from VITE_FINNHUB_API_KEY on the host. This
+          deployment does not read or store a key in the browser.
+        </p>
+      </section>
+    )
+  }
+
   return (
     <section className="max-w-xl">
       <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
       <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
       <p className="mt-2 text-sm text-muted">
-        Store a Finnhub token locally. If it is missing or the request fails, the dashboard falls back to mock quotes.
+        Store a Finnhub token locally for development. Production builds use VITE_FINNHUB_API_KEY.
+        If the key is missing or the request fails, the dashboard falls back to mock quotes.
       </p>
 
       <form onSubmit={handleSave} className="mt-6 space-y-4 rounded-2xl border border-line bg-panel p-5">

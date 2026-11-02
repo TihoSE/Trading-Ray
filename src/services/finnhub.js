@@ -82,9 +82,11 @@ export class QuoteNotFoundError extends Error {
 }
 
 export function getApiKey() {
-  const stored = localStorage.getItem('finnhub_api_key')
-  if (stored?.trim()) return stored.trim()
-  return import.meta.env.VITE_FINNHUB_API_KEY?.trim() || ''
+  const envKey = import.meta.env.VITE_FINNHUB_API_KEY?.trim() || ''
+  if (import.meta.env.PROD) return envKey
+
+  const stored = localStorage.getItem('finnhub_api_key')?.trim()
+  return stored || envKey
 }
 
 export function lookupName(symbol) {
