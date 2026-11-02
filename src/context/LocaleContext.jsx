@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { translate } from '../i18n/messages'
-import { setMoneyLocale } from '../lib/money'
+import { setMoneyLocale, USD_TO_EUR } from '../lib/money'
 
 const STORAGE_KEY = 'trading-ray-locale'
 const LocaleContext = createContext(null)
@@ -29,6 +29,7 @@ export function LocaleProvider({ children }) {
   const value = useMemo(
     () => ({
       locale,
+      usdToEur: USD_TO_EUR,
       setLocale(next) {
         setLocaleState(next === 'nl' ? 'nl' : 'en')
       },

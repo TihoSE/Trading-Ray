@@ -1,12 +1,12 @@
 import { TrendingDown, TrendingUp } from 'lucide-react'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
-import { formatEur } from '../lib/money'
+import { formatCurrency } from '../lib/money'
 import WatchButton from './WatchButton'
 
 export default function StockCard({ quote, name, onOpen }) {
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const isUp = quote.change >= 0
   const tone = isUp ? 'text-emerald-400' : 'text-rose-400'
   const badge = isUp
@@ -30,11 +30,11 @@ export default function StockCard({ quote, name, onOpen }) {
       </div>
 
       <button type="button" className="mt-6 w-full text-left" onClick={() => onOpen?.(quote)}>
-        <p className="text-3xl font-semibold tracking-tight">{formatEur(quote.current)}</p>
+        <p className="text-3xl font-semibold tracking-tight">{formatCurrency(quote.current, currency)}</p>
         <div className={`mt-3 flex items-center gap-3 text-sm font-medium ${tone}`}>
           <span>
             {isUp ? '+' : ''}
-            {formatEur(quote.change)}
+            {formatCurrency(quote.change, currency)}
           </span>
           <span>
             {isUp ? '+' : ''}
@@ -42,7 +42,7 @@ export default function StockCard({ quote, name, onOpen }) {
           </span>
         </div>
         <p className="mt-4 text-xs text-muted">
-          {t('card.prevClose', { price: formatEur(quote.previousClose) })} ·{' '}
+          {t('card.prevClose', { price: formatCurrency(quote.previousClose, currency) })} ·{' '}
           {quote.source === 'live' ? t('card.live') : t('card.sample')}
         </p>
       </button>

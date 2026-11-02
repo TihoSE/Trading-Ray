@@ -12,14 +12,14 @@ import {
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { useCandleSeries } from '../hooks/useCandleSeries'
-import { formatEur, formatMoney } from '../lib/money'
+import { formatCurrency } from '../lib/money'
 import { CANDLE_TIMEFRAMES, getCandleTimeframe } from '../services/finnhub'
 
 const GAIN = '#22c55e'
 const LOSS = '#ef4444'
 
 function ChartTooltip({ active, payload, chartStyle, t }) {
-  useCurrency()
+  const { currency } = useCurrency()
   if (!active || !payload?.length) return null
   const point = payload[0].payload
 
@@ -30,23 +30,23 @@ function ChartTooltip({ active, payload, chartStyle, t }) {
         <dl className="mt-1 grid grid-cols-2 gap-x-3 text-xs">
           <div>
             <dt className="text-muted">{t('chart.open')}</dt>
-            <dd className="font-semibold">{formatEur(point.open)}</dd>
+            <dd className="font-semibold">{formatCurrency(point.open, currency)}</dd>
           </div>
           <div>
             <dt className="text-muted">{t('chart.high')}</dt>
-            <dd className="font-semibold">{formatEur(point.high)}</dd>
+            <dd className="font-semibold">{formatCurrency(point.high, currency)}</dd>
           </div>
           <div>
             <dt className="text-muted">{t('chart.low')}</dt>
-            <dd className="font-semibold">{formatEur(point.low)}</dd>
+            <dd className="font-semibold">{formatCurrency(point.low, currency)}</dd>
           </div>
           <div>
             <dt className="text-muted">{t('chart.close')}</dt>
-            <dd className="font-semibold">{formatEur(point.close)}</dd>
+            <dd className="font-semibold">{formatCurrency(point.close, currency)}</dd>
           </div>
         </dl>
       ) : (
-        <p className="text-sm font-semibold">{formatEur(point.price)}</p>
+        <p className="text-sm font-semibold">{formatCurrency(point.price, currency)}</p>
       )}
     </div>
   )
@@ -85,7 +85,7 @@ export default function StockChart({ quote }) {
   const [timeframe, setTimeframe] = useState('1D')
   const [chartStyle, setChartStyle] = useState('line')
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const { points, source, status } = useCandleSeries(quote, timeframe)
   const option = getCandleTimeframe(timeframe)
   const stroke = quote.change >= 0 ? GAIN : LOSS
@@ -166,7 +166,7 @@ export default function StockChart({ quote }) {
               axisLine={false}
               width={64}
               domain={['auto', 'auto']}
-              tickFormatter={(value) => formatMoney(value, { digits: 0 })}
+              tickFormatter={(value) => formatCurrency(value, currency, { digits: 0 })}
             />
             <Tooltip
               content={<ChartTooltip chartStyle={chartStyle} t={t} />}

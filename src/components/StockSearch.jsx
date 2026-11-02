@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
-import { formatEur } from '../lib/money'
+import { formatCurrency } from '../lib/money'
 import { QuoteNotFoundError, fetchSearchQuote, searchSymbols } from '../services/finnhub'
 import WatchButton from './WatchButton'
 
@@ -12,7 +12,7 @@ export default function StockSearch() {
   const navigate = useNavigate()
   const { addToDashboard, openDetail, isOnDashboard } = useMarket()
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const rootRef = useRef(null)
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
@@ -157,7 +157,7 @@ export default function StockSearch() {
                   <p className="text-sm font-semibold">{result.symbol}</p>
                   <p className="text-xs text-muted">{result.name}</p>
                   <p className="mt-1 text-sm">
-                    {formatEur(result.current)}{' '}
+                    {formatCurrency(result.current, currency)}{' '}
                     <span className={result.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                       {result.change >= 0 ? '+' : ''}
                       {result.percent.toFixed(2)}%

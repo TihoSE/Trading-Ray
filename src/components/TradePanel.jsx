@@ -7,14 +7,16 @@ import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
 import {
   STARTING_CASH,
-  formatEur,
+  displayAmount,
+  formatCurrency,
   formatShares,
-  formatSignedEur,
+  formatSignedCurrency,
   maxBuyableShares,
   parseCash,
   roundShares,
   sharesForAmount,
   tradeCost,
+  usdFromDisplay,
 } from '../lib/money'
 
 const QUICK_AMOUNTS = [25, 50, 100, 250]
@@ -34,7 +36,8 @@ function parseShareInput(value) {
 export default function TradePanel({ quote }) {
   const { user } = useAuth()
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
+  const moneySign = currency === 'USD' ? '$' : '€'
   const { openPrompt } = useAccountPrompt()
   const { cash, ready, error: portfolioError, positionFor, trade } = usePortfolio()
   const [mode, setMode] = useState('amount')
@@ -45,7 +48,8 @@ export default function TradePanel({ quote }) {
   const price = Number(quote.current)
   const shareQty = parseShareInput(shares)
   const parsedAmount = parseCash(amount)
-  const fraction = parsedAmount != null && price > 0 ? sharesForAmount(parsedAmount, price) : null
+  const orderUsd = parsedAmount == null ? null : usdFromDisplay(parsedAmount, currency)
+  const fraction = orderUsd != null && price > 0 ? sharesForAmount(orderUsd, price) : null
   const quantity = mode === 'amount' ? fraction : shareQty
   const cost = quantity != null && price > 0 ? tradeCost(quantity, price) : null
   const position = positionFor(quote.symbol)
@@ -56,7 +60,7 @@ export default function TradePanel({ quote }) {
   const unrealized = held > 0 && price > 0 ? holdingValue - costBasis : 0
   const returnPct = held > 0 && position?.avgCost > 0 && price > 0 ? ((price - position.avgCost) / position.avgCost) * 100 : null
   const returnTone = unrealized >= 0 ? 'text-emerald-300' : 'text-rose-300'
-  const amountTooHigh = mode === 'amount' && parsedAmount != null && cash != null && parsedAmount > cash
+  const amountTooHigh = mode === 'amount' && orderUsd != null && cash != null && orderUsd > cash
   const amountTooSmall = mode === 'amount' && parsedAmount != null && price > 0 && fraction == null
   const guest = !user
   const orderReady =
@@ -102,14 +106,14 @@ export default function TradePanel({ quote }) {
         <div>
           <p className="text-sm font-semibold">{t('trade.paper')}</p>
           <p className="mt-1 text-xs text-muted">
-            {t('trade.fill', { price: formatEur(price), cash: formatEur(STARTING_CASH) })}
+            {t('trade.fill', { price: formatCurrency(price, currency), cash: formatCurrency(STARTING_CASH, currency) })}
           </p>
         </div>
       </div>
 
       <div className="mt-4 space-y-1 rounded-xl border border-line bg-[#070b14] px-3 py-3 text-sm">
         <p className="font-medium">
-          {t('trade.available', { amount: cash == null ? '—' : formatEur(cash) })}
+          {t('trade.available', { amount: cash == null ? '—' : formatCurrency(cash, currency) })}
         </p>
         {held > 0 ? (
           <>
@@ -117,17 +121,17 @@ export default function TradePanel({ quote }) {
               {t('trade.holdingLine', {
                 count: formatShares(held),
                 symbol: quote.symbol,
-                value: formatEur(holdingValue),
+                value: formatCurrency(holdingValue, currency),
               })}
             </p>
             <dl className="mt-2 grid grid-cols-3 gap-2 border-t border-line pt-2">
               <div>
                 <dt className="text-xs text-muted">{t('trade.gak')}</dt>
-                <dd className="mt-0.5 font-medium">{formatEur(position.avgCost)}</dd>
+                <dd className="mt-0.5 font-medium">{formatCurrency(position.avgCost, currency)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">{t('trade.returnEur')}</dt>
-                <dd className={`mt-0.5 font-medium ${returnTone}`}>{formatSignedEur(unrealized)}</dd>
+                <dd className={`mt-0.5 font-medium ${returnTone}`}>{formatSignedCurrency(unrealized, currency)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">{t('trade.returnPct')}</dt>
@@ -140,7 +144,7 @@ export default function TradePanel({ quote }) {
           <p className="text-xs text-muted">
             {t('trade.maxCapacity', {
               count: formatShares(maxShares),
-              amount: formatEur(tradeCost(maxShares, price) ?? 0),
+              amount: formatCurrency(tradeCost(maxShares, price) ?? 0, currency),
             })}
           </p>
         ) : null}
@@ -148,7 +152,7 @@ export default function TradePanel({ quote }) {
 
       <div role="group" aria-label={t('trade.paper')} className="mt-4 grid grid-cols-2 gap-2">
         {[
-          ['amount', 'trade.modeAmount'],
+          ['amount', currency === 'USD' ? 'trade.modeAmountUsd' : 'trade.modeAmount'],
           ['shares', 'trade.modeShares'],
         ].map(([value, label]) => (
           <button
@@ -181,13 +185,13 @@ export default function TradePanel({ quote }) {
                 active ? 'border-sky-400 bg-sky-400 text-slate-950' : 'border-line text-ink hover:bg-white/5'
               }`}
             >
-              €{value}
+              {`${moneySign}${value}`}
             </button>
           )
         })}
         <button
           type="button"
-          aria-pressed={mode === 'amount' && cash != null && parsedAmount === Math.round(cash * 100) / 100}
+          aria-pressed={mode === 'amount' && cash != null && parsedAmount === displayAmount(cash, currency)}
           onClick={() => {
             if (!user) {
               openPrompt()
@@ -195,11 +199,11 @@ export default function TradePanel({ quote }) {
             }
             if (cash == null || cash <= 0) return
             setMode('amount')
-            setAmount(cash.toFixed(2))
+            setAmount(displayAmount(cash, currency).toFixed(2))
           }}
           disabled={Boolean(user) && (cash == null || cash <= 0)}
           className={`rounded-lg border px-1 py-1.5 text-xs font-semibold disabled:opacity-50 ${
-            mode === 'amount' && cash != null && parsedAmount === Math.round(cash * 100) / 100
+            mode === 'amount' && cash != null && parsedAmount === displayAmount(cash, currency)
               ? 'border-sky-400 bg-sky-400 text-slate-950'
               : 'border-line text-ink hover:bg-white/5'
           }`}
@@ -210,12 +214,12 @@ export default function TradePanel({ quote }) {
 
       <div className="mt-3">
         <label htmlFor="trade-size" className="block text-sm font-medium">
-          {mode === 'amount' ? t('trade.amount') : t('trade.shares')}
+          {mode === 'amount' ? t(currency === 'USD' ? 'trade.amountUsd' : 'trade.amount') : t('trade.shares')}
         </label>
         <div className="mt-2 flex gap-2">
           <div className="relative min-w-0 flex-1">
             {mode === 'amount' ? (
-              <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted">€</span>
+              <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted">{moneySign}</span>
             ) : null}
             <input
               id="trade-size"
@@ -240,7 +244,7 @@ export default function TradePanel({ quote }) {
               }
               if (mode === 'amount') {
                 if (cash == null || cash <= 0) return
-                setAmount(cash.toFixed(2))
+                setAmount(displayAmount(cash, currency).toFixed(2))
                 return
               }
               if (maxShares < 0.0001) return
@@ -265,10 +269,10 @@ export default function TradePanel({ quote }) {
                 : t('trade.amountTooSmall')
             : cost == null
               ? t('trade.wholeShares')
-              : t('trade.estimate', { amount: formatEur(cost) })}
+              : t('trade.estimate', { amount: formatCurrency(cost, currency) })}
       </p>
       {amountTooHigh ? (
-        <p className="mt-1 text-xs text-rose-300">{t('trade.amountTooHigh')}</p>
+        <p className="mt-1 text-xs text-rose-300">{t(currency === 'USD' ? 'trade.amountTooHighUsd' : 'trade.amountTooHigh')}</p>
       ) : null}
       {!amountTooHigh && cost != null && cash != null && cost > cash ? (
         <p className="mt-1 text-xs text-rose-300">{t('trade.notEnoughCash')}</p>

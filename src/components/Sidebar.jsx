@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
-import { formatEur } from '../lib/money'
+import { formatCurrency } from '../lib/money'
 
 const links = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
@@ -16,7 +16,7 @@ const links = [
 export default function Sidebar({ open, onClose }) {
   const { user } = useAuth()
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const { cash, ready } = usePortfolio()
   return (
     <>
@@ -81,7 +81,7 @@ export default function Sidebar({ open, onClose }) {
           {user ? (
             <>
               <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted">{t('sidebar.paperCash')}</p>
-              <p className="mt-1 text-sm font-semibold text-ink">{ready && cash != null ? formatEur(cash) : '—'}</p>
+              <p className="mt-1 text-sm font-semibold text-ink">{ready && cash != null ? formatCurrency(cash, currency) : '—'}</p>
             </>
           ) : (
             <p className="mt-3 text-sm text-ink">{t('sidebar.readOnly')}</p>

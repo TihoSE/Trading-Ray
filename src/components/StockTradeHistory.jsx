@@ -4,7 +4,7 @@ import { useAccountPrompt } from '../context/AccountPromptContext'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
-import { formatEur, formatShares, formatSignedEur } from '../lib/money'
+import { formatCurrency, formatShares, formatSignedCurrency } from '../lib/money'
 import { supabase } from '../lib/supabase'
 
 function formatWhen(value, locale) {
@@ -35,7 +35,7 @@ export default function StockTradeHistory({ symbol }) {
   const { user } = useAuth()
   const { openAuth } = useAccountPrompt()
   const { locale, t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const { trades } = usePortfolio()
   const ticker = symbol.trim().toUpperCase()
   const [rows, setRows] = useState([])
@@ -118,14 +118,14 @@ export default function StockTradeHistory({ symbol }) {
                     {formatShares(item.shares)}
                   </p>
                   <p className="text-xs text-muted">
-                    {formatEur(item.price)} · {formatWhen(item.createdAt, locale)}
+                    {formatCurrency(item.price, currency)} · {formatWhen(item.createdAt, locale)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p>{formatEur(item.amount)}</p>
+                  <p>{formatCurrency(item.amount, currency)}</p>
                   {item.realizedPnl != null ? (
                     <p className={`text-xs ${item.realizedPnl >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                      {t('portfolio.realized', { amount: formatSignedEur(item.realizedPnl) })}
+                      {t('portfolio.realized', { amount: formatSignedCurrency(item.realizedPnl, currency) })}
                     </p>
                   ) : null}
                 </div>

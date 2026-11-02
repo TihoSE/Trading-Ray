@@ -5,7 +5,15 @@ import { useAuth } from '../context/AuthContext'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
-import { STARTING_CASH, formatEur, formatMoney, formatShares, formatSignedEur, parseCash } from '../lib/money'
+import {
+  STARTING_CASH,
+  displayAmount,
+  formatCurrency,
+  formatShares,
+  formatSignedCurrency,
+  parseCash,
+  usdFromDisplay,
+} from '../lib/money'
 import { fetchQuote, lookupName } from '../services/finnhub'
 
 function formatWhen(value, locale) {
@@ -23,15 +31,19 @@ function CashEditor() {
   const { user } = useAuth()
   const { openPrompt } = useAccountPrompt()
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const { cash, ready, setPaperCash } = usePortfolio()
-  const cap = formatMoney(STARTING_CASH, { digits: 0 })
-  const zero = formatMoney(0, { digits: 0 })
+  const cap = formatCurrency(STARTING_CASH, currency, { digits: 0 })
+  const zero = formatCurrency(0, currency, { digits: 0 })
   const [draft, setDraft] = useState(null)
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
   const [tone, setTone] = useState('ok')
-  const shown = draft ?? (cash == null ? '' : String(cash))
+  const shown = draft ?? (cash == null ? '' : String(displayAmount(cash, currency) ?? ''))
+
+  useEffect(() => {
+    setDraft(null)
+  }, [currency])
 
   async function apply(next) {
     if (!user) {
@@ -60,7 +72,8 @@ function CashEditor() {
 
   function applyDraft(event) {
     event.preventDefault()
-    const next = parseCash(shown)
+    const parsed = parseCash(shown)
+    const next = parsed == null ? null : usdFromDisplay(parsed, currency)
     if (next == null) {
       setTone('err')
       setMessage(t('portfolio.badAmount', { zero, cap }))
@@ -108,7 +121,7 @@ function CashEditor() {
           disabled={Boolean(user) && (!ready || cash == null || pending || cash + 1000 > STARTING_CASH)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          {t('portfolio.add1000', { amount: formatMoney(1000, { digits: 0 }) })}
+          {t('portfolio.add1000', { amount: formatCurrency(1000, currency, { digits: 0 }) })}
         </button>
         <button
           type="button"
@@ -116,7 +129,7 @@ function CashEditor() {
           disabled={Boolean(user) && (!ready || cash == null || pending || cash + 10000 > STARTING_CASH)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          {t('portfolio.add10000', { amount: formatMoney(10000, { digits: 0 }) })}
+          {t('portfolio.add10000', { amount: formatCurrency(10000, currency, { digits: 0 }) })}
         </button>
         <button
           type="button"
@@ -137,7 +150,7 @@ function CashEditor() {
 export default function Portfolio() {
   const { cash, funded, positions, trades, ready, error } = usePortfolio()
   const { locale, t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const [marks, setMarks] = useState({})
   const tickerKey = positions.map((position) => position.ticker).join(',')
 
@@ -199,7 +212,7 @@ export default function Portfolio() {
       <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('portfolio.kicker')}</p>
       <h1 className="mt-1 text-2xl font-semibold">{t('portfolio.title')}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        {t('portfolio.intro', { cash: formatEur(STARTING_CASH) })}
+        {t('portfolio.intro', { cash: formatCurrency(STARTING_CASH, currency) })}
       </p>
 
       {error ? (
@@ -211,18 +224,18 @@ export default function Portfolio() {
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <article className="rounded-2xl border border-line bg-panel p-5">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">{t('portfolio.cash')}</p>
-          <p className="mt-2 text-2xl font-semibold">{ready && cash != null ? formatEur(cash) : '—'}</p>
+          <p className="mt-2 text-2xl font-semibold">{ready && cash != null ? formatCurrency(cash, currency) : '—'}</p>
         </article>
         <article className="rounded-2xl border border-line bg-panel p-5">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">{t('portfolio.holdings')}</p>
-          <p className="mt-2 text-2xl font-semibold">{ready ? formatEur(holdingsValue) : '—'}</p>
+          <p className="mt-2 text-2xl font-semibold">{ready ? formatCurrency(holdingsValue, currency) : '—'}</p>
         </article>
         <article className="rounded-2xl border border-line bg-panel p-5">
           <p className="text-xs uppercase tracking-[0.16em] text-muted">{t('portfolio.equity')}</p>
-          <p className="mt-2 text-2xl font-semibold">{ready && cash != null ? formatEur(equity) : '—'}</p>
+          <p className="mt-2 text-2xl font-semibold">{ready && cash != null ? formatCurrency(equity, currency) : '—'}</p>
           {ready && cash != null ? (
             <p className={`mt-2 text-sm font-medium ${tone}`}>
-              {formatSignedEur(pnl)}
+              {formatSignedCurrency(pnl, currency)}
               {pnlPercent == null ? '' : ` · ${pnl >= 0 ? '+' : ''}${pnlPercent.toFixed(2)}%`}
             </p>
           ) : null}
@@ -266,14 +279,14 @@ export default function Portfolio() {
                     <p className="text-xs text-muted">{row.name}</p>
                   </td>
                   <td className="px-4 py-3">{formatShares(row.shares)}</td>
-                  <td className="px-4 py-3">{formatEur(row.avgCost)}</td>
+                  <td className="px-4 py-3">{formatCurrency(row.avgCost, currency)}</td>
                   <td className="px-4 py-3">
-                    {formatEur(row.mark)}
+                    {formatCurrency(row.mark, currency)}
                     {row.priced ? '' : <span className="ml-2 text-xs text-muted">{t('portfolio.cost')}</span>}
                   </td>
-                  <td className="px-4 py-3">{formatEur(row.marketValue)}</td>
+                  <td className="px-4 py-3">{formatCurrency(row.marketValue, currency)}</td>
                   <td className={`px-4 py-3 ${row.unrealized >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                    {formatSignedEur(row.unrealized)}
+                    {formatSignedCurrency(row.unrealized, currency)}
                   </td>
                 </tr>
               ))}
@@ -299,10 +312,10 @@ export default function Portfolio() {
                 <p className="text-xs text-muted">{formatWhen(item.createdAt, locale)}</p>
               </div>
               <div className="text-right">
-                <p>{formatEur(item.amount)}</p>
+                <p>{formatCurrency(item.amount, currency)}</p>
                 {item.realizedPnl != null ? (
                   <p className={`text-xs ${item.realizedPnl >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                    {t('portfolio.realized', { amount: formatSignedEur(item.realizedPnl) })}
+                    {t('portfolio.realized', { amount: formatSignedCurrency(item.realizedPnl, currency) })}
                   </p>
                 ) : null}
               </div>

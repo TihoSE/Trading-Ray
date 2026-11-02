@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { setMoneyCurrency } from '../lib/money'
+import { setMoneyCurrency, USD_TO_EUR } from '../lib/money'
 
 const STORAGE_KEY = 'trading-ray-currency'
 const CurrencyContext = createContext(null)
@@ -27,6 +27,7 @@ export function CurrencyProvider({ children }) {
   const value = useMemo(
     () => ({
       currency,
+      usdToEur: USD_TO_EUR,
       setCurrency(next) {
         setCurrencyState(next === 'USD' ? 'USD' : 'EUR')
       },

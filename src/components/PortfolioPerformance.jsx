@@ -5,7 +5,7 @@ import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
 import { buildEquityHistory, PERFORMANCE_RANGES, sliceEquity } from '../lib/performance'
-import { formatEur, formatMoney, formatSignedEur } from '../lib/money'
+import { formatCurrency, formatSignedCurrency } from '../lib/money'
 import { fetchQuote } from '../services/finnhub'
 import { supabase } from '../lib/supabase'
 
@@ -22,7 +22,7 @@ function formatTick(time, range, locale) {
 }
 
 function PerformanceTooltip({ active, payload, locale }) {
-  useCurrency()
+  const { currency } = useCurrency()
   if (!active || !payload?.length) return null
   const point = payload[0].payload
   const tag = locale === 'nl' ? 'nl-NL' : 'en-GB'
@@ -32,7 +32,7 @@ function PerformanceTooltip({ active, payload, locale }) {
       <p className="text-xs text-muted">
         {new Date(point.time).toLocaleString(tag, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
       </p>
-      <p className="text-sm font-semibold">{formatEur(point.equity)}</p>
+      <p className="text-sm font-semibold">{formatCurrency(point.equity, currency)}</p>
     </div>
   )
 }
@@ -41,7 +41,7 @@ export default function PortfolioPerformance() {
   const { user } = useAuth()
   const { cash, positions, trades, ready } = usePortfolio()
   const { locale, t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const [range, setRange] = useState('1M')
   const [history, setHistory] = useState([])
   const [marks, setMarks] = useState({})
@@ -141,7 +141,7 @@ export default function PortfolioPerformance() {
           <h2 className="mt-1 text-lg font-semibold">{t('dash.performanceTitle')}</h2>
           {user && change != null ? (
             <p className="mt-1 text-sm font-medium" style={{ color: stroke }}>
-              {formatSignedEur(change)}
+              {formatSignedCurrency(change, currency)}
               {changePct == null ? '' : ` · ${change > 0 ? '+' : ''}${changePct.toFixed(2)}%`}
             </p>
           ) : null}
@@ -203,7 +203,7 @@ export default function PortfolioPerformance() {
                   axisLine={false}
                   width={64}
                   domain={['auto', 'auto']}
-                  tickFormatter={(value) => formatMoney(value, { digits: 0 })}
+                  tickFormatter={(value) => formatCurrency(value, currency, { digits: 0 })}
                 />
                 <Tooltip content={<PerformanceTooltip locale={locale} />} cursor={{ stroke: '#243044' }} />
                 <Area

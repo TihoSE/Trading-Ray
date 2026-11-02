@@ -2,7 +2,7 @@ import { X } from 'lucide-react'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
-import { formatEur } from '../lib/money'
+import { formatCurrency } from '../lib/money'
 import EtfHoldings from './EtfHoldings'
 import StockCard from './StockCard'
 import StockChart from './StockChart'
@@ -12,7 +12,7 @@ import TradePanel from './TradePanel'
 export default function StockDetail() {
   const { detail, closeDetail, addToDashboard, isOnDashboard } = useMarket()
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
 
   if (!detail) return null
 
@@ -37,15 +37,15 @@ export default function StockDetail() {
         <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <div className="rounded-xl border border-line bg-panel p-3">
             <dt className="text-xs text-muted">{t('detail.open')}</dt>
-            <dd className="mt-1 font-medium">{formatEur(detail.open)}</dd>
+            <dd className="mt-1 font-medium">{formatCurrency(detail.open, currency)}</dd>
           </div>
           <div className="rounded-xl border border-line bg-panel p-3">
             <dt className="text-xs text-muted">{t('detail.high')}</dt>
-            <dd className="mt-1 font-medium">{formatEur(detail.high)}</dd>
+            <dd className="mt-1 font-medium">{formatCurrency(detail.high, currency)}</dd>
           </div>
           <div className="rounded-xl border border-line bg-panel p-3">
             <dt className="text-xs text-muted">{t('detail.low')}</dt>
-            <dd className="mt-1 font-medium">{formatEur(detail.low)}</dd>
+            <dd className="mt-1 font-medium">{formatCurrency(detail.low, currency)}</dd>
           </div>
         </dl>
         <button

@@ -1,5 +1,8 @@
 export const STARTING_CASH = 10_000
 
+// Quotes, cash, and fills are stored in US dollars.
+export const USD_TO_EUR = 0.92
+
 let moneyLocale = 'en-GB'
 let moneyCurrency = 'EUR'
 
@@ -11,27 +14,56 @@ export function setMoneyCurrency(currency) {
   moneyCurrency = currency === 'USD' ? 'USD' : 'EUR'
 }
 
-export function formatMoney(value, { digits = 2 } = {}) {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return '—'
+export function convertUsd(amountInUsd, targetCurrency = moneyCurrency) {
+  const amount = Number(amountInUsd)
+  if (!Number.isFinite(amount)) return null
+  return targetCurrency === 'USD' ? amount : amount * USD_TO_EUR
+}
+
+export function usdFromDisplay(amountInDisplay, targetCurrency = moneyCurrency) {
+  if (amountInDisplay == null || amountInDisplay === '') return null
+  const amount = Number(amountInDisplay)
+  if (!Number.isFinite(amount)) return null
+  const stored = targetCurrency === 'USD' ? amount : amount / USD_TO_EUR
+  return Math.round(stored * 100) / 100
+}
+
+export function displayAmount(amountInUsd, targetCurrency = moneyCurrency) {
+  const converted = convertUsd(amountInUsd, targetCurrency)
+  if (converted == null) return null
+  return Math.round(converted * 100) / 100
+}
+
+export function formatCurrency(amountInUsd, targetCurrency = moneyCurrency, { digits = 2 } = {}) {
+  const currency = targetCurrency === 'USD' ? 'USD' : 'EUR'
+  const amount = convertUsd(amountInUsd, currency)
+  if (amount == null) return '—'
   return amount.toLocaleString(moneyLocale, {
     style: 'currency',
-    currency: moneyCurrency,
+    currency,
     currencyDisplay: 'narrowSymbol',
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   })
 }
 
+export function formatSignedCurrency(amountInUsd, targetCurrency = moneyCurrency, options) {
+  const amount = Number(amountInUsd)
+  if (!Number.isFinite(amount)) return '—'
+  if (amount > 0) return `+${formatCurrency(amount, targetCurrency, options)}`
+  return formatCurrency(amount, targetCurrency, options)
+}
+
+export function formatMoney(value, options) {
+  return formatCurrency(value, moneyCurrency, options)
+}
+
 export function formatEur(value) {
-  return formatMoney(value)
+  return formatCurrency(value)
 }
 
 export function formatSignedEur(value) {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return '—'
-  if (amount > 0) return `+${formatMoney(amount)}`
-  return formatMoney(amount)
+  return formatSignedCurrency(value)
 }
 
 export function parseCash(value) {

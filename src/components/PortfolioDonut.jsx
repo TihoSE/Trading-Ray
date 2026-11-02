@@ -4,21 +4,21 @@ import { useAuth } from '../context/AuthContext'
 import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
-import { formatEur } from '../lib/money'
+import { formatCurrency } from '../lib/money'
 import { fetchQuote } from '../services/finnhub'
 
 const CASH_COLOR = '#38bdf8'
 const POSITION_COLOR = '#22c55e'
 
 function DonutTooltip({ active, payload }) {
-  useCurrency()
+  const { currency } = useCurrency()
   if (!active || !payload?.length) return null
   const item = payload[0]
 
   return (
     <div className="rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
       <p className="text-xs text-muted">{item.name}</p>
-      <p className="text-sm font-semibold">{formatEur(item.value)}</p>
+      <p className="text-sm font-semibold">{formatCurrency(item.value, currency)}</p>
     </div>
   )
 }
@@ -27,7 +27,7 @@ export default function PortfolioDonut() {
   const { user } = useAuth()
   const { cash, positions, ready } = usePortfolio()
   const { t } = useLocale()
-  useCurrency()
+  const { currency } = useCurrency()
   const [marks, setMarks] = useState({})
   const tickerKey = positions.map((position) => position.ticker).join(',')
 
@@ -111,7 +111,7 @@ export default function PortfolioDonut() {
             <div className="pointer-events-none absolute inset-0 grid place-items-center">
               <div className="text-center">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">{t('portfolio.equity')}</p>
-                <p className="mt-1 text-sm font-semibold">{formatEur(total)}</p>
+                <p className="mt-1 text-sm font-semibold">{formatCurrency(total, currency)}</p>
               </div>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function PortfolioDonut() {
                     <span className="truncate">{slice.name}</span>
                   </span>
                   <span className="shrink-0 font-medium">
-                    {formatEur(slice.value)}
+                    {formatCurrency(slice.value, currency)}
                     <span className="ml-2 text-xs text-muted">{share.toFixed(0)}%</span>
                   </span>
                 </li>

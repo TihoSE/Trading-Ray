@@ -6,7 +6,7 @@ import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
 import { useTheme } from '../context/ThemeContext'
-import { STARTING_CASH, formatEur } from '../lib/money'
+import { STARTING_CASH, formatCurrency } from '../lib/money'
 import { supabase } from '../lib/supabase'
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024
@@ -46,7 +46,7 @@ export default function Settings() {
   const { theme, setTheme } = useTheme()
   const { currency, setCurrency } = useCurrency()
   const { t } = useLocale()
-  const cashLabel = formatEur(STARTING_CASH)
+  const cashLabel = formatCurrency(STARTING_CASH, currency)
 
   const [name, setName] = useState(user?.name ?? '')
   const [file, setFile] = useState(null)
