@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PortfolioDonut from '../components/PortfolioDonut'
+import PortfolioPerformance from '../components/PortfolioPerformance'
 import StockCard from '../components/StockCard'
 import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
@@ -62,8 +63,9 @@ export default function Dashboard() {
         </div>
         <div className="order-3 lg:mt-6">{cardGrid}</div>
       </div>
-      <div className="order-2 lg:order-none">
+      <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none">
         <PortfolioDonut />
+        <PortfolioPerformance />
       </div>
     </section>
   )
