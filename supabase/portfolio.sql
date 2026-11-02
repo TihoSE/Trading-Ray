@@ -311,7 +311,9 @@ grant execute on function public.ensure_portfolio() to authenticated;
 grant execute on function public.place_trade(text, text, numeric, numeric) to authenticated;
 
 -- Practice cash. funded is the money put into the account, so a deposit or
--- withdrawal does not show up as a trading gain or loss.
+-- withdrawal does not show up as a trading gain or loss. The editor can set
+-- cash from 0 to the €10,000 starting amount only. place_trade is not capped,
+-- so a real sale can leave the balance higher than €10,000.
 alter table public.portfolios
   add column if not exists funded numeric(16, 2) not null default 10000;
 
@@ -331,8 +333,8 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  if p_cash is null or p_cash < 0 or p_cash > 1000000000 then
-    raise exception 'Cash must be between 0 and 1000000000';
+  if p_cash is null or p_cash < 0 or p_cash > 10000 then
+    raise exception 'Practice cash can be set from 0 to 10000. Trading can raise the balance above that.';
   end if;
 
   v_cash := round(p_cash, 2);

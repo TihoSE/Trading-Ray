@@ -34,6 +34,11 @@ function CashEditor() {
       openPrompt()
       return
     }
+    if (next > STARTING_CASH) {
+      setTone('err')
+      setMessage(t('portfolio.tooHigh'))
+      return
+    }
     setPending(true)
     setMessage('')
     try {
@@ -67,11 +72,6 @@ function CashEditor() {
     }
     if (cash == null) return
     const next = Math.round((cash + delta) * 100) / 100
-    if (next > 1_000_000_000) {
-      setTone('err')
-      setMessage(t('portfolio.tooHigh'))
-      return
-    }
     void apply(next)
   }
 
@@ -101,7 +101,7 @@ function CashEditor() {
         <button
           type="button"
           onClick={() => addAmount(1000)}
-          disabled={Boolean(user) && (!ready || cash == null || pending)}
+          disabled={Boolean(user) && (!ready || cash == null || pending || cash + 1000 > STARTING_CASH)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
           {t('portfolio.add1000')}
@@ -109,7 +109,7 @@ function CashEditor() {
         <button
           type="button"
           onClick={() => addAmount(10000)}
-          disabled={Boolean(user) && (!ready || cash == null || pending)}
+          disabled={Boolean(user) && (!ready || cash == null || pending || cash + 10000 > STARTING_CASH)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
           {t('portfolio.add10000')}
