@@ -1,37 +1,42 @@
 import { createClient } from '@supabase/supabase-js'
 
-function readEnv(name) {
-  const raw = import.meta.env[name]
-  const value = typeof raw === 'string' ? raw.trim() : ''
+function readEnv(value, name) {
+  const trimmed = typeof value === 'string' ? value.trim() : ''
 
-  if (!value) {
+  if (!trimmed) {
     console.error(
       `[supabase] ${name} is missing or empty. Set it in .env for local dev and in the Vercel project environment, then redeploy. Vite inlines VITE_ variables at build time, so a later change does not affect an existing deployment.`,
     )
   }
 
-  return value
+  return trimmed
 }
 
-const supabaseUrl = readEnv('VITE_SUPABASE_URL')
-const supabaseAnonKey = readEnv('VITE_SUPABASE_ANON_KEY')
+const supabaseUrl = readEnv(import.meta.env.VITE_SUPABASE_URL, 'VITE_SUPABASE_URL')
+const supabaseAnonKey = readEnv(import.meta.env.VITE_SUPABASE_ANON_KEY, 'VITE_SUPABASE_ANON_KEY')
+
+function invalidUrlMessage() {
+  return 'VITE_SUPABASE_URL is not a valid URL. Expected https://<project-ref>.supabase.co'
+}
+
+let configError = null
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Supabase is not configured. Check the console for which VITE_SUPABASE_ variable is missing or empty.',
-  )
+  const missing = [
+    !supabaseUrl ? 'VITE_SUPABASE_URL' : null,
+    !supabaseAnonKey ? 'VITE_SUPABASE_ANON_KEY' : null,
+  ].filter(Boolean)
+  configError = `${missing.join(' and ')} is missing or empty. Add the variable in Vercel, then redeploy.`
+} else {
+  try {
+    const projectHost = new URL(supabaseUrl).host
+    console.info(`[supabase] Using project ${projectHost}`)
+  } catch {
+    console.error(`[supabase] ${invalidUrlMessage()} Received: "${supabaseUrl}"`)
+    configError = invalidUrlMessage()
+  }
 }
 
-let projectHost = supabaseUrl
-try {
-  projectHost = new URL(supabaseUrl).host
-} catch {
-  console.error(
-    `[supabase] VITE_SUPABASE_URL is not a valid URL: "${supabaseUrl}". Expected https://<project-ref>.supabase.co`,
-  )
-  throw new Error('Supabase URL is invalid. Check the console for details.')
-}
+export const supabaseConfigError = configError
 
-console.info(`[supabase] Using project ${projectHost}`)
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = configError ? null : createClient(supabaseUrl, supabaseAnonKey)
