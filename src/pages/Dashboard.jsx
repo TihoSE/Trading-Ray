@@ -37,35 +37,34 @@ export default function Dashboard() {
     ...extraQuotes.filter((item) => !quotes.some((quote) => quote.symbol === item.symbol)),
   ]
 
+  const cardGrid =
+    status === 'loading' ? (
+      <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
+        {Array.from({ length: POPULAR_SYMBOLS.length }).map((_, index) => (
+          <div key={index} className="h-48 animate-pulse rounded-2xl border border-line bg-panel" />
+        ))}
+      </div>
+    ) : (
+      <div className="grid gap-4 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]">
+        {cards.map((quote) => (
+          <StockCard key={quote.symbol} quote={quote} name={quote.name} onOpen={openDetail} />
+        ))}
+      </div>
+    )
+
   return (
-    <section>
-      <div className="mb-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div>
+    <section className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="contents lg:block">
+        <div className="order-1">
           <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('dash.kicker')}</p>
           <h1 className="mt-1 text-2xl font-semibold">{t('dash.title')}</h1>
           <p className="mt-2 text-sm text-muted">{t('dash.hint')}</p>
         </div>
+        <div className="order-3 lg:mt-6">{cardGrid}</div>
+      </div>
+      <div className="order-2 lg:order-none">
         <PortfolioDonut />
       </div>
-
-      {status === 'loading' ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: POPULAR_SYMBOLS.length }).map((_, index) => (
-            <div key={index} className="h-48 animate-pulse rounded-2xl border border-line bg-panel" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {cards.map((quote) => (
-            <StockCard
-              key={quote.symbol}
-              quote={quote}
-              name={quote.name}
-              onOpen={openDetail}
-            />
-          ))}
-        </div>
-      )}
     </section>
   )
 }
