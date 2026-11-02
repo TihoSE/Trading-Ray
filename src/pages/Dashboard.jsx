@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PortfolioDonut from '../components/PortfolioDonut'
 import StockCard from '../components/StockCard'
 import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
@@ -38,12 +39,13 @@ export default function Dashboard() {
 
   return (
     <section>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-6 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('dash.kicker')}</p>
           <h1 className="mt-1 text-2xl font-semibold">{t('dash.title')}</h1>
+          <p className="mt-2 text-sm text-muted">{t('dash.hint')}</p>
         </div>
-        <p className="text-sm text-muted">{t('dash.hint')}</p>
+        <PortfolioDonut />
       </div>
 
       {status === 'loading' ? (

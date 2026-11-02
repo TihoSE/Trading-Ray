@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAccountPrompt } from '../context/AccountPromptContext'
 import { useAuth } from '../context/AuthContext'
+import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
-import { STARTING_CASH, formatEur, formatSignedEur, parseCash } from '../lib/money'
+import { STARTING_CASH, formatEur, formatMoney, formatShares, formatSignedEur, parseCash } from '../lib/money'
 import { fetchQuote, lookupName } from '../services/finnhub'
 
 function formatWhen(value, locale) {
@@ -22,7 +23,10 @@ function CashEditor() {
   const { user } = useAuth()
   const { openPrompt } = useAccountPrompt()
   const { t } = useLocale()
+  useCurrency()
   const { cash, ready, setPaperCash } = usePortfolio()
+  const cap = formatMoney(STARTING_CASH, { digits: 0 })
+  const zero = formatMoney(0, { digits: 0 })
   const [draft, setDraft] = useState(null)
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
@@ -36,7 +40,7 @@ function CashEditor() {
     }
     if (next > STARTING_CASH) {
       setTone('err')
-      setMessage(t('portfolio.tooHigh'))
+      setMessage(t('portfolio.tooHigh', { cap }))
       return
     }
     setPending(true)
@@ -59,7 +63,7 @@ function CashEditor() {
     const next = parseCash(shown)
     if (next == null) {
       setTone('err')
-      setMessage(t('portfolio.badAmount'))
+      setMessage(t('portfolio.badAmount', { zero, cap }))
       return
     }
     void apply(next)
@@ -78,7 +82,7 @@ function CashEditor() {
   return (
     <form onSubmit={applyDraft} className="mt-4 rounded-2xl border border-line bg-panel p-5">
       <p className="text-sm font-semibold">{t('portfolio.adjustTitle')}</p>
-      <p className="mt-1 text-sm text-muted">{t('portfolio.adjustBody')}</p>
+      <p className="mt-1 text-sm text-muted">{t('portfolio.adjustBody', { cap })}</p>
       <label className="mt-4 block text-sm font-medium">
         {t('portfolio.balance')}
         <input
@@ -104,7 +108,7 @@ function CashEditor() {
           disabled={Boolean(user) && (!ready || cash == null || pending || cash + 1000 > STARTING_CASH)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          {t('portfolio.add1000')}
+          {t('portfolio.add1000', { amount: formatMoney(1000, { digits: 0 }) })}
         </button>
         <button
           type="button"
@@ -112,7 +116,7 @@ function CashEditor() {
           disabled={Boolean(user) && (!ready || cash == null || pending || cash + 10000 > STARTING_CASH)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          {t('portfolio.add10000')}
+          {t('portfolio.add10000', { amount: formatMoney(10000, { digits: 0 }) })}
         </button>
         <button
           type="button"
@@ -120,7 +124,7 @@ function CashEditor() {
           disabled={Boolean(user) && (!ready || cash == null || pending)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          {t('portfolio.reset')}
+          {t('portfolio.reset', { cap })}
         </button>
       </div>
       {message ? (
@@ -133,6 +137,7 @@ function CashEditor() {
 export default function Portfolio() {
   const { cash, funded, positions, trades, ready, error } = usePortfolio()
   const { locale, t } = useLocale()
+  useCurrency()
   const [marks, setMarks] = useState({})
   const tickerKey = positions.map((position) => position.ticker).join(',')
 
@@ -260,7 +265,7 @@ export default function Portfolio() {
                     <p className="font-semibold">{row.ticker}</p>
                     <p className="text-xs text-muted">{row.name}</p>
                   </td>
-                  <td className="px-4 py-3">{row.shares}</td>
+                  <td className="px-4 py-3">{formatShares(row.shares)}</td>
                   <td className="px-4 py-3">{formatEur(row.avgCost)}</td>
                   <td className="px-4 py-3">
                     {formatEur(row.mark)}
@@ -289,7 +294,7 @@ export default function Portfolio() {
                   <span className={item.side === 'buy' ? 'text-emerald-300' : 'text-rose-300'}>
                     {item.side === 'buy' ? t('portfolio.buy') : t('portfolio.sell')}
                   </span>{' '}
-                  {item.shares} {item.ticker}
+                  {formatShares(item.shares)} {item.ticker}
                 </p>
                 <p className="text-xs text-muted">{formatWhen(item.createdAt, locale)}</p>
               </div>

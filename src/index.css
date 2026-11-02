@@ -19,11 +19,66 @@ body,
   min-height: 100%;
 }
 
+html.dark {
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  color-scheme: light;
+  --color-surface: #f4f7fb;
+  --color-panel: #ffffff;
+  --color-panel-2: #e7eef8;
+  --color-line: #d5dfec;
+  --color-muted: #52637a;
+  --color-ink: #0f172a;
+  --color-gain: #15803d;
+  --color-loss: #e11d48;
+  --color-accent: #0284c7;
+}
+
 body {
   margin: 0;
   background: #070b14;
   color: var(--color-ink);
   font-family: var(--font-sans);
+}
+
+html:not(.dark) body {
+  background: #f4f7fb;
+}
+
+html:not(.dark) .bg-\[\#070b14\] {
+  background-color: #f4f7fb;
+}
+
+html:not(.dark) .bg-\[\#070b14\]\/80 {
+  background-color: rgb(244 247 251 / 0.8);
+}
+
+html:not(.dark) .text-slate-200,
+html:not(.dark) .text-slate-300 {
+  color: #334155;
+}
+
+html:not(.dark) .text-slate-400 {
+  color: #475569;
+}
+
+html:not(.dark) .text-sky-200,
+html:not(.dark) .text-sky-300 {
+  color: #0369a1;
+}
+
+html:not(.dark) .placeholder\:text-slate-500::placeholder {
+  color: #64748b;
+}
+
+html:not(.dark) .hover\:bg-white\/5:hover {
+  background-color: rgb(15 23 42 / 0.06);
+}
+
+html:not(.dark) .hover\:text-slate-100:hover {
+  color: #0f172a;
 }
 
 * {

@@ -193,6 +193,22 @@ export function PortfolioProvider({ children }) {
         setFunded(asNumber(data?.funded))
         return data
       },
+      async resetPortfolio() {
+        const { data, error: resetError } = await supabase.rpc('reset_portfolio')
+        if (resetError) {
+          if (resetError.code === 'PGRST202' || /reset_portfolio/i.test(resetError.message ?? '')) {
+            throw new Error('Run supabase/portfolio.sql again in the SQL editor, then retry.')
+          }
+          throw new Error(resetError.message || 'Could not reset the portfolio.')
+        }
+
+        setCash(asNumber(data?.cash ?? STARTING_CASH))
+        setFunded(asNumber(data?.funded ?? STARTING_CASH))
+        setPositions([])
+        setTrades([])
+        setError('')
+        return data
+      },
     }),
     [cash, funded, positions, trades, ready, error],
   )

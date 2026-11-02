@@ -8,29 +8,24 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { useCandleSeries } from '../hooks/useCandleSeries'
+import { formatEur, formatMoney } from '../lib/money'
 import { CANDLE_TIMEFRAMES, getCandleTimeframe } from '../services/finnhub'
 
 const GAIN = '#22c55e'
 const LOSS = '#ef4444'
 
-function formatPrice(value) {
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  })
-}
-
 function ChartTooltip({ active, payload }) {
+  useCurrency()
   if (!active || !payload?.length) return null
   const point = payload[0].payload
 
   return (
     <div className="rounded-xl border border-line bg-panel px-3 py-2 shadow-lg">
       <p className="text-xs text-muted">{point.label}</p>
-      <p className="text-sm font-semibold">{formatPrice(point.price)}</p>
+      <p className="text-sm font-semibold">{formatEur(point.price)}</p>
     </div>
   )
 }
@@ -38,6 +33,7 @@ function ChartTooltip({ active, payload }) {
 export default function StockChart({ quote }) {
   const [timeframe, setTimeframe] = useState('1D')
   const { t } = useLocale()
+  useCurrency()
   const { points, source, status } = useCandleSeries(quote, timeframe)
   const option = getCandleTimeframe(timeframe)
   const stroke = quote.change >= 0 ? GAIN : LOSS
@@ -92,7 +88,7 @@ export default function StockChart({ quote }) {
               axisLine={false}
               width={64}
               domain={['auto', 'auto']}
-              tickFormatter={(value) => `$${Number(value).toFixed(0)}`}
+              tickFormatter={(value) => formatMoney(value, { digits: 0 })}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#243044' }} />
             <Line

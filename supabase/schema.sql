@@ -23,6 +23,8 @@ create policy "Users can delete own watchlist"
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text,
+  display_name text,
+  avatar_url text,
   role text not null default 'user' check (role in ('admin', 'user')),
   created_at timestamptz not null default now()
 );
@@ -36,6 +38,14 @@ create policy "Users can read own profile"
 
 revoke all on public.profiles from public, anon, authenticated;
 grant select on public.profiles to authenticated;
+grant update (display_name, avatar_url) on public.profiles to authenticated;
+
+drop policy if exists "Users can update own profile" on public.profiles;
+create policy "Users can update own profile"
+  on public.profiles for update
+  to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 create or replace function public.handle_new_user()
 returns trigger

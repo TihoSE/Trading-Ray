@@ -1,24 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Plus, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
+import { formatEur } from '../lib/money'
 import { QuoteNotFoundError, fetchSearchQuote, searchSymbols } from '../services/finnhub'
 import WatchButton from './WatchButton'
-
-function formatPrice(value) {
-  if (typeof value !== 'number') return '—'
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  })
-}
 
 export default function StockSearch() {
   const navigate = useNavigate()
   const { addToDashboard, openDetail, isOnDashboard } = useMarket()
   const { t } = useLocale()
+  useCurrency()
   const rootRef = useRef(null)
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
@@ -163,7 +157,7 @@ export default function StockSearch() {
                   <p className="text-sm font-semibold">{result.symbol}</p>
                   <p className="text-xs text-muted">{result.name}</p>
                   <p className="mt-1 text-sm">
-                    {formatPrice(result.current)}{' '}
+                    {formatEur(result.current)}{' '}
                     <span className={result.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
                       {result.change >= 0 ? '+' : ''}
                       {result.percent.toFixed(2)}%

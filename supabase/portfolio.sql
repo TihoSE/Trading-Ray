@@ -16,7 +16,7 @@ create table if not exists public.portfolios (
 create table if not exists public.positions (
   user_id uuid not null references auth.users (id) on delete cascade,
   ticker text not null,
-  shares numeric(18, 0) not null check (shares > 0),
+  shares numeric(18, 4) not null check (shares > 0),
   avg_cost numeric(16, 4) not null check (avg_cost >= 0),
   updated_at timestamptz not null default now(),
   primary key (user_id, ticker)
@@ -27,7 +27,7 @@ create table if not exists public.trades (
   user_id uuid not null references auth.users (id) on delete cascade,
   ticker text not null,
   side text not null check (side in ('buy', 'sell')),
-  shares numeric(18, 0) not null check (shares > 0),
+  shares numeric(18, 4) not null check (shares > 0),
   price numeric(16, 4) not null check (price > 0),
   amount numeric(16, 2) not null check (amount > 0),
   realized_pnl numeric(16, 2),
@@ -165,9 +165,9 @@ begin
     raise exception 'Shares and price are required';
   end if;
 
-  v_shares := trunc(p_shares);
-  if v_shares <> p_shares or v_shares < 1 or v_shares > 1000000 then
-    raise exception 'Shares must be a whole number from 1 to 1000000';
+  v_shares := round(p_shares, 4);
+  if v_shares < 0.0001 or v_shares > 1000000 then
+    raise exception 'Shares must be from 0.0001 to 1000000, with at most 4 decimal places';
   end if;
 
   v_price := round(p_price, 4);
@@ -208,7 +208,7 @@ begin
       v_old_avg := 0;
     end if;
 
-    v_new_shares := v_old_shares + v_shares;
+    v_new_shares := round(v_old_shares + v_shares, 4);
     v_new_avg := round(((v_old_shares * v_old_avg) + v_amount) / v_new_shares, 4);
 
     update public.portfolios
@@ -237,7 +237,10 @@ begin
       raise exception 'Insufficient shares';
     end if;
 
-    v_new_shares := v_old_shares - v_shares;
+    v_new_shares := round(v_old_shares - v_shares, 4);
+    if v_new_shares < 0.0001 then
+      v_new_shares := 0;
+    end if;
     v_new_avg := v_old_avg;
     v_realized := round((v_price - v_old_avg) * v_shares, 2);
 
@@ -310,6 +313,14 @@ revoke all on function public.place_trade(text, text, numeric, numeric) from pub
 grant execute on function public.ensure_portfolio() to authenticated;
 grant execute on function public.place_trade(text, text, numeric, numeric) to authenticated;
 
+-- Existing installs created shares as whole numbers. Widen them so an order
+-- placed from a euro amount can store a fraction to 4 decimal places.
+alter table public.positions
+  alter column shares type numeric(18, 4);
+
+alter table public.trades
+  alter column shares type numeric(18, 4);
+
 -- Practice cash. funded is the money put into the account, so a deposit or
 -- withdrawal does not show up as a trading gain or loss. The editor can set
 -- cash from 0 to the €10,000 starting amount only. place_trade is not capped,
@@ -366,3 +377,149 @@ $$;
 
 revoke all on function public.set_paper_cash(numeric) from public, anon;
 grant execute on function public.set_paper_cash(numeric) to authenticated;
+
+-- Profile name and avatar. Role and email stay server-side: a signed-in user
+-- can update only display_name and avatar_url on their own row.
+alter table public.profiles
+  add column if not exists display_name text,
+  add column if not exists avatar_url text;
+
+grant select on public.profiles to authenticated;
+grant update (display_name, avatar_url) on public.profiles to authenticated;
+
+drop policy if exists "Users can update own profile" on public.profiles;
+create policy "Users can update own profile"
+  on public.profiles for update
+  to authenticated
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+create or replace function public.protect_profile_identity()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if auth.uid() = old.id then
+    if new.role is distinct from old.role or new.email is distinct from old.email then
+      raise exception 'Role and email cannot be changed from the client';
+    end if;
+  end if;
+
+  if new.display_name is not null then
+    new.display_name := nullif(trim(new.display_name), '');
+    if new.display_name is not null and char_length(new.display_name) > 40 then
+      raise exception 'Display name must be 40 characters or fewer';
+    end if;
+  end if;
+
+  if new.avatar_url is not null and (
+    char_length(new.avatar_url) > 1000 or new.avatar_url !~ '^https://'
+  ) then
+    raise exception 'Avatar must be an https URL';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_profile_identity on public.profiles;
+create trigger protect_profile_identity
+  before update on public.profiles
+  for each row execute function public.protect_profile_identity();
+
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "Public read avatars" on storage.objects;
+create policy "Public read avatars"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'avatars');
+
+drop policy if exists "Users insert own avatar" on storage.objects;
+create policy "Users insert own avatar"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Users update own avatar" on storage.objects;
+create policy "Users update own avatar"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "Users delete own avatar" on storage.objects;
+create policy "Users delete own avatar"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- Wipes this user's positions and trades and returns cash to the €10,000 start.
+create or replace function public.reset_portfolio()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+begin
+  if v_user is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  delete from public.positions where user_id = v_user;
+  delete from public.trades where user_id = v_user;
+
+  insert into public.portfolios (user_id)
+  values (v_user)
+  on conflict (user_id) do nothing;
+
+  update public.portfolios
+  set cash = 10000,
+      funded = 10000,
+      updated_at = now()
+  where user_id = v_user;
+
+  return jsonb_build_object('cash', 10000, 'funded', 10000);
+end;
+$$;
+
+-- Deletes the signed-in auth user. Profiles, watchlist, portfolio, positions,
+-- and trades follow through on delete cascade.
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user uuid := auth.uid();
+begin
+  if v_user is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  delete from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = v_user::text;
+
+  delete from auth.users where id = v_user;
+end;
+$$;
+
+revoke all on function public.reset_portfolio() from public, anon;
+revoke all on function public.delete_own_account() from public, anon;
+grant execute on function public.reset_portfolio() to authenticated;
+grant execute on function public.delete_own_account() to authenticated;

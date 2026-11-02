@@ -3,24 +3,33 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
-function mapUser(authUser, role = 'user') {
+function mapUser(authUser, profile) {
   if (!authUser) return null
 
   const metadata = authUser.user_metadata ?? {}
-  const name = metadata.name || metadata.full_name || authUser.email?.split('@')[0] || 'Trader'
+  const storedName = profile?.display_name?.trim()
+  const name = storedName || metadata.name || metadata.full_name || authUser.email?.split('@')[0] || 'Trader'
 
   return {
     id: authUser.id,
     email: authUser.email ?? '',
     name,
-    role: role === 'admin' ? 'admin' : 'user',
+    avatarUrl: profile?.avatar_url || '',
+    role: profile?.role === 'admin' ? 'admin' : 'user',
   }
 }
 
-async function fetchRole(userId) {
-  const { data, error } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle()
-  if (error || data?.role !== 'admin') return 'user'
-  return 'admin'
+async function fetchProfile(userId) {
+  const full = await supabase
+    .from('profiles')
+    .select('role, display_name, avatar_url')
+    .eq('id', userId)
+    .maybeSingle()
+  if (!full.error) return full.data
+
+  const roleOnly = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle()
+  if (roleOnly.error) return null
+  return roleOnly.data
 }
 
 export function AuthProvider({ children }) {
@@ -45,9 +54,9 @@ export function AuthProvider({ children }) {
         return
       }
 
-      const role = await fetchRole(authUser.id)
+      const profile = await fetchProfile(authUser.id)
       if (!active || current !== request) return
-      setUser(mapUser(authUser, role))
+      setUser(mapUser(authUser, profile))
       setReady(true)
     }
 
@@ -98,6 +107,24 @@ export function AuthProvider({ children }) {
       async logout() {
         const { error } = await supabase.auth.signOut()
         if (error) throw new Error(error.message)
+      },
+      async updateProfile({ name, avatarUrl }) {
+        if (!user?.id) throw new Error('Not signed in.')
+        const payload = { display_name: name.trim() }
+        if (avatarUrl !== undefined) payload.avatar_url = avatarUrl
+
+        const { error } = await supabase.from('profiles').update(payload).eq('id', user.id)
+        if (error) throw new Error(error.message)
+
+        setUser((current) =>
+          current
+            ? {
+                ...current,
+                name: name.trim(),
+                avatarUrl: avatarUrl === undefined ? current.avatarUrl : avatarUrl || '',
+              }
+            : current,
+        )
       },
     }),
     [user, ready],

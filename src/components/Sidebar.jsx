@@ -1,6 +1,7 @@
 import { LayoutDashboard, LineChart, Settings, Wallet, X } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useCurrency } from '../context/CurrencyContext'
 import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
 import { formatEur } from '../lib/money'
@@ -9,14 +10,14 @@ const links = [
   { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { to: '/watchlist', labelKey: 'nav.watchlist', icon: LineChart },
   { to: '/portfolio', labelKey: 'nav.portfolio', icon: Wallet },
-  { to: '/settings', labelKey: 'nav.settings', icon: Settings, adminOnly: true },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]
 
 export default function Sidebar({ open, onClose }) {
-  const { user, isAdmin } = useAuth()
+  const { user } = useAuth()
   const { t } = useLocale()
+  useCurrency()
   const { cash, ready } = usePortfolio()
-  const visibleLinks = links.filter((link) => !link.adminOnly || isAdmin)
   return (
     <>
       {open ? (
@@ -54,7 +55,7 @@ export default function Sidebar({ open, onClose }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {visibleLinks.map(({ to, labelKey, icon: Icon }) => (
+          {links.map(({ to, labelKey, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

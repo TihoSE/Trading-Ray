@@ -4,8 +4,9 @@ import { useAuth } from '../context/AuthContext'
 import { useLocale } from '../context/LocaleContext'
 import StockSearch from './StockSearch'
 
-function avatarUrl(name) {
-  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=0ea5e9`
+function avatarSrc(user) {
+  if (user.avatarUrl) return user.avatarUrl
+  return `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=0ea5e9`
 }
 
 export default function Navbar({ onMenuClick }) {
@@ -57,9 +58,9 @@ export default function Navbar({ onMenuClick }) {
       {user ? (
         <div className="flex items-center gap-2 rounded-2xl border border-line bg-panel py-1.5 pr-1.5 pl-2">
           <img
-            src={avatarUrl(user.name)}
+            src={avatarSrc(user)}
             alt={`${user.name} avatar`}
-            className="h-9 w-9 rounded-full ring-1 ring-sky-400/30"
+            className="h-9 w-9 rounded-full object-cover ring-1 ring-sky-400/30"
           />
           <div className="hidden min-w-0 pr-1 sm:block">
             <p className="max-w-[9rem] truncate text-sm font-medium leading-tight">{user.name}</p>
