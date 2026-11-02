@@ -64,7 +64,10 @@ export function roundShares(value) {
 export function formatShares(value) {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return '—'
-  return amount.toLocaleString(moneyLocale, { maximumFractionDigits: 4 })
+  return amount.toLocaleString(moneyLocale, {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })
 }
 
 export function tradeCost(shares, price) {
@@ -76,7 +79,7 @@ export function tradeCost(shares, price) {
 
 export function sharesForAmount(amount, price) {
   if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(price) || price <= 0) return null
-  let shares = Math.floor((amount / price) * 10000 + 1e-8) / 10000
+  let shares = Math.round((amount / price) * 10000) / 10000
   if (shares > 1_000_000) shares = 1_000_000
   while (shares >= 0.0001 && tradeCost(shares, price) > amount) {
     shares = Math.round((shares - 0.0001) * 10000) / 10000

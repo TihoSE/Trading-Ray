@@ -6,6 +6,7 @@ import { formatEur } from '../lib/money'
 import EtfHoldings from './EtfHoldings'
 import StockCard from './StockCard'
 import StockChart from './StockChart'
+import StockTradeHistory from './StockTradeHistory'
 import TradePanel from './TradePanel'
 
 export default function StockDetail() {
@@ -59,6 +60,7 @@ export default function StockDetail() {
           {isOnDashboard(detail.symbol) ? t('detail.onDashboard') : t('detail.add')}
         </button>
         <TradePanel quote={detail} />
+        <StockTradeHistory symbol={detail.symbol} />
       </div>
     </div>
   )

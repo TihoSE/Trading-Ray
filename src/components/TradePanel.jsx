@@ -9,12 +9,21 @@ import {
   STARTING_CASH,
   formatEur,
   formatShares,
+  formatSignedEur,
   maxBuyableShares,
   parseCash,
   roundShares,
   sharesForAmount,
   tradeCost,
 } from '../lib/money'
+
+const QUICK_AMOUNTS = [25, 50, 100, 250]
+
+function formatReturnPct(value) {
+  if (value == null || !Number.isFinite(value)) return '—'
+  const sign = value > 0 ? '+' : ''
+  return `${sign}${value.toFixed(2)}%`
+}
 
 function parseShareInput(value) {
   const text = String(value).trim().replace(',', '.')
@@ -28,7 +37,7 @@ export default function TradePanel({ quote }) {
   useCurrency()
   const { openPrompt } = useAccountPrompt()
   const { cash, ready, error: portfolioError, positionFor, trade } = usePortfolio()
-  const [mode, setMode] = useState('shares')
+  const [mode, setMode] = useState('amount')
   const [shares, setShares] = useState('1')
   const [amount, setAmount] = useState('')
   const [pending, setPending] = useState('')
@@ -43,6 +52,10 @@ export default function TradePanel({ quote }) {
   const held = position?.shares ?? 0
   const maxShares = cash == null ? 0 : maxBuyableShares(cash, price)
   const holdingValue = held > 0 && price > 0 ? held * price : held > 0 ? held * (position?.avgCost ?? 0) : 0
+  const costBasis = held * (position?.avgCost ?? 0)
+  const unrealized = held > 0 && price > 0 ? holdingValue - costBasis : 0
+  const returnPct = held > 0 && position?.avgCost > 0 && price > 0 ? ((price - position.avgCost) / position.avgCost) * 100 : null
+  const returnTone = unrealized >= 0 ? 'text-emerald-300' : 'text-rose-300'
   const amountTooHigh = mode === 'amount' && parsedAmount != null && cash != null && parsedAmount > cash
   const amountTooSmall = mode === 'amount' && parsedAmount != null && price > 0 && fraction == null
   const guest = !user
@@ -99,13 +112,29 @@ export default function TradePanel({ quote }) {
           {t('trade.available', { amount: cash == null ? '—' : formatEur(cash) })}
         </p>
         {held > 0 ? (
-          <p>
-            {t('trade.holdingLine', {
-              count: formatShares(held),
-              symbol: quote.symbol,
-              value: formatEur(holdingValue),
-            })}
-          </p>
+          <>
+            <p>
+              {t('trade.holdingLine', {
+                count: formatShares(held),
+                symbol: quote.symbol,
+                value: formatEur(holdingValue),
+              })}
+            </p>
+            <dl className="mt-2 grid grid-cols-3 gap-2 border-t border-line pt-2">
+              <div>
+                <dt className="text-xs text-muted">{t('trade.gak')}</dt>
+                <dd className="mt-0.5 font-medium">{formatEur(position.avgCost)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">{t('trade.returnEur')}</dt>
+                <dd className={`mt-0.5 font-medium ${returnTone}`}>{formatSignedEur(unrealized)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">{t('trade.returnPct')}</dt>
+                <dd className={`mt-0.5 font-medium ${returnTone}`}>{formatReturnPct(returnPct)}</dd>
+              </div>
+            </dl>
+          </>
         ) : null}
         {user && price > 0 ? (
           <p className="text-xs text-muted">
@@ -119,8 +148,8 @@ export default function TradePanel({ quote }) {
 
       <div role="group" aria-label={t('trade.paper')} className="mt-4 grid grid-cols-2 gap-2">
         {[
-          ['shares', 'trade.modeShares'],
           ['amount', 'trade.modeAmount'],
+          ['shares', 'trade.modeShares'],
         ].map(([value, label]) => (
           <button
             key={value}
@@ -136,21 +165,72 @@ export default function TradePanel({ quote }) {
         ))}
       </div>
 
+      <div role="group" aria-label={t('trade.quick')} className="mt-3 grid grid-cols-5 gap-1.5">
+        {QUICK_AMOUNTS.map((value) => {
+          const active = mode === 'amount' && parsedAmount === value
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setMode('amount')
+                setAmount(value.toFixed(2))
+              }}
+              className={`rounded-lg border px-1 py-1.5 text-xs font-semibold ${
+                active ? 'border-sky-400 bg-sky-400 text-slate-950' : 'border-line text-ink hover:bg-white/5'
+              }`}
+            >
+              €{value}
+            </button>
+          )
+        })}
+        <button
+          type="button"
+          aria-pressed={mode === 'amount' && cash != null && parsedAmount === Math.round(cash * 100) / 100}
+          onClick={() => {
+            if (!user) {
+              openPrompt()
+              return
+            }
+            if (cash == null || cash <= 0) return
+            setMode('amount')
+            setAmount(cash.toFixed(2))
+          }}
+          disabled={Boolean(user) && (cash == null || cash <= 0)}
+          className={`rounded-lg border px-1 py-1.5 text-xs font-semibold disabled:opacity-50 ${
+            mode === 'amount' && cash != null && parsedAmount === Math.round(cash * 100) / 100
+              ? 'border-sky-400 bg-sky-400 text-slate-950'
+              : 'border-line text-ink hover:bg-white/5'
+          }`}
+        >
+          MAX
+        </button>
+      </div>
+
       <div className="mt-3">
         <label htmlFor="trade-size" className="block text-sm font-medium">
           {mode === 'amount' ? t('trade.amount') : t('trade.shares')}
         </label>
         <div className="mt-2 flex gap-2">
-          <input
-            id="trade-size"
-            type="text"
-            inputMode="decimal"
-            value={mode === 'amount' ? amount : shares}
-            onChange={(event) =>
-              mode === 'amount' ? setAmount(event.target.value) : setShares(event.target.value)
-            }
-            className="w-full rounded-xl border border-line bg-[#070b14] px-3 py-2.5 text-sm outline-none focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20"
-          />
+          <div className="relative min-w-0 flex-1">
+            {mode === 'amount' ? (
+              <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted">€</span>
+            ) : null}
+            <input
+              id="trade-size"
+              type="text"
+              inputMode="decimal"
+              placeholder={mode === 'amount' ? t('trade.amountPlaceholder') : '0.0001'}
+              value={mode === 'amount' ? amount : shares}
+              onChange={(event) =>
+                mode === 'amount' ? setAmount(event.target.value) : setShares(event.target.value)
+              }
+              className={`w-full rounded-xl border border-line bg-[#070b14] py-2.5 text-sm outline-none focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20 ${
+                mode === 'amount' ? 'pr-3 pl-8' : 'px-3'
+              }`}
+            />
+          </div>
           <button
             type="button"
             onClick={() => {

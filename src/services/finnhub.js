@@ -386,10 +386,17 @@ export function simulateCandles(quote, timeframe = '1D') {
     let price = end - direction * span * (1 - progress) + wave + ripple
     if (index === count - 1) price = end
 
+    const close = +Math.max(price, 0.01).toFixed(2)
+    const open = points.length === 0 ? close : points[points.length - 1].close
+    const wick = Math.max(Math.abs(close - open) * 0.45, close * 0.0015)
     points.push({
       time: date.toISOString(),
       label: formatCandleLabel(date, config.id),
-      price: +Math.max(price, 0.01).toFixed(2),
+      price: close,
+      open,
+      close,
+      high: +(Math.max(open, close) + wick).toFixed(2),
+      low: +Math.max(Math.min(open, close) - wick * 0.65, 0.01).toFixed(2),
     })
   }
 
@@ -406,10 +413,18 @@ function candlesFromPayload(payload, timeframe) {
       const close = Number(payload.c[index])
       if (!Number.isFinite(close) || close <= 0) return null
       const date = new Date(Number(timestamp) * 1000)
+      const open = Number(payload.o?.[index])
+      const high = Number(payload.h?.[index])
+      const low = Number(payload.l?.[index])
+      const safeClose = +close.toFixed(2)
       return {
         time: date.toISOString(),
         label: formatCandleLabel(date, timeframe),
-        price: +close.toFixed(2),
+        price: safeClose,
+        open: Number.isFinite(open) && open > 0 ? +open.toFixed(2) : safeClose,
+        close: safeClose,
+        high: Number.isFinite(high) && high > 0 ? +high.toFixed(2) : safeClose,
+        low: Number.isFinite(low) && low > 0 ? +low.toFixed(2) : safeClose,
       }
     })
     .filter(Boolean)
