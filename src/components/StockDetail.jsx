@@ -1,7 +1,9 @@
 import { X } from 'lucide-react'
 import { useMarket } from '../context/MarketContext'
+import EtfHoldings from './EtfHoldings'
 import StockCard from './StockCard'
 import StockChart from './StockChart'
+import TradePanel from './TradePanel'
 
 function formatPrice(value) {
   return value.toLocaleString('en-US', {
@@ -33,6 +35,7 @@ export default function StockDetail() {
         </div>
         <StockCard quote={detail} name={detail.name} />
         <StockChart quote={detail} />
+        <EtfHoldings quote={detail} />
         <dl className="mt-4 grid grid-cols-3 gap-3 text-sm">
           <div className="rounded-xl border border-line bg-panel p-3">
             <dt className="text-xs text-muted">Open</dt>
@@ -58,6 +61,7 @@ export default function StockDetail() {
         >
           {isOnDashboard(detail.symbol) ? 'Already on dashboard' : 'Add to dashboard'}
         </button>
+        <TradePanel quote={detail} />
       </div>
     </div>
   )

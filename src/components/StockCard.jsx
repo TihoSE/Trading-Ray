@@ -45,7 +45,7 @@ export default function StockCard({ quote, name, onOpen }) {
           </span>
         </div>
         <p className="mt-4 text-xs text-muted">
-          Prev close {formatPrice(quote.previousClose)} · {quote.source === 'live' ? 'Finnhub live' : 'Mock fallback'}
+          Prev close {formatPrice(quote.previousClose)} · {quote.source === 'live' ? 'Live' : 'Sample'}
         </p>
       </button>
     </article>

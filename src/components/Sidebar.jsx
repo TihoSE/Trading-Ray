@@ -1,15 +1,19 @@
-import { LayoutDashboard, LineChart, Settings, X } from 'lucide-react'
+import { LayoutDashboard, LineChart, Settings, Wallet, X } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { usePortfolio } from '../context/PortfolioContext'
+import { formatEur } from '../lib/money'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/watchlist', label: 'Watchlist', icon: LineChart },
+  { to: '/portfolio', label: 'Portfolio', icon: Wallet },
   { to: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ]
 
 export default function Sidebar({ open, onClose }) {
   const { isAdmin } = useAuth()
+  const { cash, ready } = usePortfolio()
   const visibleLinks = links.filter((link) => !link.adminOnly || isAdmin)
   return (
     <>
@@ -70,7 +74,9 @@ export default function Sidebar({ open, onClose }) {
 
         <div className="m-4 rounded-2xl border border-line bg-panel-2 p-4">
           <p className="text-xs uppercase tracking-[0.18em] text-muted">Session</p>
-          <p className="mt-2 text-sm text-ink">Markets delayed unless a Finnhub key is set.</p>
+          <p className="mt-2 text-sm text-ink">Market data may be delayed.</p>
+          <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted">Paper cash</p>
+          <p className="mt-1 text-sm font-semibold text-ink">{ready && cash != null ? formatEur(cash) : '—'}</p>
         </div>
       </aside>
     </>

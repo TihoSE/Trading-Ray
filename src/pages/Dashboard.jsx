@@ -41,7 +41,7 @@ export default function Dashboard() {
           <p className="text-xs uppercase tracking-[0.2em] text-muted">Overview</p>
           <h1 className="mt-1 text-2xl font-semibold">Market dashboard</h1>
         </div>
-        <p className="text-sm text-muted">Search any ticker to add it to the grid</p>
+        <p className="text-sm text-muted">Search a company or ticker and add it to the grid</p>
       </div>
 
       {status === 'loading' ? (

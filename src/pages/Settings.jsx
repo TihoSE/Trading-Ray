@@ -23,8 +23,8 @@ function ApiKeyForm() {
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
         <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
         <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">
-          Live quotes and candles use the Finnhub key from VITE_FINNHUB_API_KEY on the host. This
-          deployment does not read or store a key in the browser.
+          Live quotes use the market data key configured for this deployment. This deployment does
+          not read or store a key in the browser.
         </p>
       </section>
     )
@@ -35,13 +35,13 @@ function ApiKeyForm() {
       <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
       <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
       <p className="mt-2 text-sm text-muted">
-        Store a Finnhub token locally for development. Production builds use VITE_FINNHUB_API_KEY.
-        If the key is missing or the request fails, the dashboard falls back to mock quotes.
+        Store a market data key locally for development. If the key is missing or the request fails,
+        the dashboard falls back to sample quotes.
       </p>
 
       <form onSubmit={handleSave} className="mt-6 space-y-4 rounded-2xl border border-line bg-panel p-5">
         <label className="block text-sm font-medium">
-          Finnhub API key
+          Market data key
           <input
             type="password"
             value={key}
@@ -71,7 +71,7 @@ export default function Settings() {
         <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
         <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
         <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">
-          Only an admin can view or change the Finnhub API key.
+          Only an admin can view or change the market data key.
         </p>
       </section>
     )

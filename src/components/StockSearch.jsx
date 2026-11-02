@@ -52,10 +52,18 @@ export default function StockSearch() {
     return () => window.clearTimeout(timer)
   }, [query])
 
+  function chooseMatch(needle, matches) {
+    const upper = needle.toUpperCase()
+    const exact = matches.find((item) => item.symbol.toUpperCase() === upper)
+    if (exact) return exact
+    if (!/^[A-Za-z0-9.]{1,12}$/.test(needle)) return matches[0] ?? null
+    return matches[0] ?? { symbol: upper, name: upper }
+  }
+
   async function loadQuote(symbol) {
-    const ticker = symbol.trim().toUpperCase()
-    if (!ticker) {
-      setError('Enter a ticker symbol.')
+    const needle = symbol.trim()
+    if (!needle) {
+      setError('Enter a company name or ticker.')
       setOpen(true)
       return
     }
@@ -66,14 +74,20 @@ export default function StockSearch() {
     setOpen(true)
 
     try {
-      const quote = await fetchSearchQuote(ticker)
-      setResult(quote)
-      setQuery(ticker)
+      const matches = await searchSymbols(needle)
+      setSuggestions(matches)
+      const chosen = chooseMatch(needle, matches)
+      if (!chosen?.symbol) throw new QuoteNotFoundError(needle)
+
+      const quote = await fetchSearchQuote(chosen.symbol)
+      const companyName = chosen.name && chosen.name.toUpperCase() !== quote.symbol ? chosen.name : quote.name
+      setResult({ ...quote, name: companyName, type: chosen.type || quote.type })
+      setQuery(quote.symbol)
     } catch (caught) {
       const message =
         caught instanceof QuoteNotFoundError
-          ? caught.message
-          : 'Unable to fetch that ticker. Check the symbol or your Finnhub key.'
+          ? 'No match for that company or ticker.'
+          : 'Unable to load that quote. Try another search.'
       setError(message)
     } finally {
       setLoading(false)
@@ -110,13 +124,14 @@ export default function StockSearch() {
           <input
             value={query}
             onChange={(event) => {
-              setQuery(event.target.value.toUpperCase())
+              setQuery(event.target.value)
+              setResult(null)
               setError('')
             }}
             onFocus={() => setOpen(true)}
-            placeholder="Search any ticker, e.g. AMD AMZN GOOGL"
+            placeholder="Search any company or ticker"
             className="w-full rounded-xl border border-line bg-panel py-2.5 pr-16 pl-10 text-sm text-ink outline-none placeholder:text-slate-500 focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20"
-            aria-label="Search stock ticker"
+            aria-label="Search company or ticker"
           />
           <button
             type="submit"
@@ -132,7 +147,7 @@ export default function StockSearch() {
           {loading ? (
             <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted">
               <Loader2 size={16} className="animate-spin text-sky-300" />
-              Fetching quote from Finnhub…
+              Looking up quote…
             </div>
           ) : null}
 

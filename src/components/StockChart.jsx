@@ -39,7 +39,7 @@ export default function StockChart({ quote }) {
   const { points, source, status } = useCandleSeries(quote, timeframe)
   const option = getCandleTimeframe(timeframe)
   const stroke = quote.change >= 0 ? GAIN : LOSS
-  const sourceLabel = status === 'loading' ? 'Loading' : source === 'live' ? 'Finnhub' : 'Sample'
+  const sourceLabel = status === 'loading' ? 'Loading' : source === 'live' ? 'Live' : 'Sample'
 
   return (
     <div className="mt-4 rounded-2xl border border-line bg-panel p-4">

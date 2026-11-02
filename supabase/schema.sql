@@ -47,6 +47,13 @@ begin
   insert into public.profiles (id, email, role)
   values (new.id, new.email, 'user')
   on conflict (id) do nothing;
+
+  if to_regclass('public.portfolios') is not null then
+    insert into public.portfolios (user_id)
+    values (new.id)
+    on conflict (user_id) do nothing;
+  end if;
+
   return new;
 end;
 $$;

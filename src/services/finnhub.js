@@ -1,6 +1,7 @@
 const QUOTE_URL = 'https://finnhub.io/api/v1/quote'
 const SEARCH_URL = 'https://finnhub.io/api/v1/search'
 const CANDLE_URL = 'https://finnhub.io/api/v1/stock/candle'
+const HOLDINGS_URL = 'https://finnhub.io/api/v1/etf/holdings'
 
 export const CANDLE_TIMEFRAMES = [
   {
@@ -39,7 +40,7 @@ export const CANDLE_TIMEFRAMES = [
 
 export const POPULAR_SYMBOLS = [
   { symbol: 'NVDA', name: 'NVIDIA' },
-  { symbol: 'SPY', name: 'S&P 500 ETF' },
+  { symbol: 'SPY', name: 'S&P 500 ETF', type: 'ETF' },
   { symbol: 'AAPL', name: 'Apple' },
   { symbol: 'MSFT', name: 'Microsoft' },
   { symbol: 'TSLA', name: 'Tesla' },
@@ -54,7 +55,7 @@ export const POPULAR_SYMBOLS = [
 export const SYMBOL_DIRECTORY = [
   ...POPULAR_SYMBOLS,
   { symbol: 'INTC', name: 'Intel' },
-  { symbol: 'QQQ', name: 'Nasdaq 100 ETF' },
+  { symbol: 'QQQ', name: 'Nasdaq 100 ETF', type: 'ETF' },
 ]
 
 const MOCK_QUOTES = {
@@ -71,6 +72,20 @@ const MOCK_QUOTES = {
   COIN: { c: 248.16, d: 7.22, dp: 3.0, h: 252.4, l: 239.8, o: 241.5, pc: 240.94 },
   INTC: { c: 23.48, d: 0.31, dp: 1.34, h: 23.9, l: 22.88, o: 23.05, pc: 23.17 },
   QQQ: { c: 512.66, d: 1.02, dp: 0.2, h: 514.8, l: 509.4, o: 511.2, pc: 511.64 },
+}
+
+export class HoldingsAccessError extends Error {
+  constructor() {
+    super('Holdings are not included in the current market data plan.')
+    this.name = 'HoldingsAccessError'
+  }
+}
+
+export function isEtfQuote(quote) {
+  if (!quote) return false
+  const type = String(quote.type || '').toUpperCase()
+  if (type === 'ETF' || type === 'ETP') return true
+  return /\bETF\b/i.test(quote.name || '')
 }
 
 export class QuoteNotFoundError extends Error {
@@ -157,7 +172,7 @@ export async function fetchQuote(symbol, { fallbackMock = true } = {}) {
     )
 
     if (!response.ok) {
-      throw new Error(`Finnhub responded with ${response.status}`)
+      throw new Error(`Quote request failed (${response.status})`)
     }
 
     const data = await response.json()
@@ -173,6 +188,90 @@ export async function fetchQuote(symbol, { fallbackMock = true } = {}) {
       if (mocked) return mocked
     }
     throw error instanceof Error ? error : new Error('Unable to fetch quote.')
+  }
+}
+
+function readWeight(item) {
+  const raw = item?.percent ?? item?.weight ?? item?.portfolioWeight
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : null
+}
+
+function normalizeHolding(item) {
+  const symbol = String(item?.symbol || item?.ticker || '').trim().toUpperCase()
+  const name = String(item?.name || item?.holdingName || symbol || 'Unknown').trim()
+  return {
+    symbol,
+    name,
+    weight: readWeight(item),
+    assetType: String(item?.assetType || item?.asset_type || ''),
+  }
+}
+
+function asPercentWeights(holdings) {
+  const weights = holdings.map((item) => item.weight).filter((value) => value != null)
+  const weightSum = weights.reduce((total, value) => total + value, 0)
+  const fractional = weightSum > 0 && weightSum <= 1.5
+  if (!fractional) return holdings
+  return holdings.map((item) => ({
+    ...item,
+    weight: item.weight == null ? null : item.weight * 100,
+  }))
+}
+
+function stockHoldings(holdings) {
+  const equities = holdings.filter((item) => {
+    const type = item.assetType.toLowerCase()
+    if (!type) return true
+    return type.includes('equity') || type.includes('stock')
+  })
+  return equities.length > 0 ? equities : holdings
+}
+
+export async function fetchEtfHoldings(symbol) {
+  const ticker = symbol.trim().toUpperCase()
+  const token = getApiKey()
+  if (!token) throw new HoldingsAccessError()
+
+  const collected = []
+  let atDate = ''
+  let reportedTotal = null
+
+  for (let page = 0; page < 20; page += 1) {
+    const skip = collected.length
+    const response = await fetch(
+      `${HOLDINGS_URL}?symbol=${encodeURIComponent(ticker)}&skip=${skip}&token=${encodeURIComponent(token)}`,
+    )
+
+    if (response.status === 401 || response.status === 403) throw new HoldingsAccessError()
+    if (!response.ok) throw new Error('Unable to load holdings.')
+
+    const data = await response.json()
+    if (data?.error) {
+      if (/access|permission|forbidden/i.test(String(data.error))) throw new HoldingsAccessError()
+      throw new Error('Unable to load holdings.')
+    }
+
+    const batch = (Array.isArray(data?.holdings) ? data.holdings : []).map(normalizeHolding)
+    atDate = data?.atDate || data?.at_date || atDate
+    const total = Number(data?.numberOfHoldings ?? data?.number_of_holdings)
+    if (Number.isFinite(total)) reportedTotal = total
+    if (batch.length === 0) break
+
+    collected.push(...batch)
+    const reachedEnd = reportedTotal != null && collected.length >= reportedTotal
+    const shortPage = batch.length < 50
+    if (reachedEnd || shortPage) break
+  }
+
+  const holdings = asPercentWeights(stockHoldings(collected))
+    .sort((left, right) => (right.weight ?? -1) - (left.weight ?? -1))
+
+  return {
+    symbol: ticker,
+    atDate,
+    total: reportedTotal ?? holdings.length,
+    holdings,
   }
 }
 
@@ -210,17 +309,23 @@ export async function searchSymbols(query) {
     const remote = (data.result ?? [])
       .filter((item) => ['Common Stock', 'ETF', 'ADR', 'ETP'].includes(item.type) || !item.type)
       .map((item) => ({
-        symbol: item.displaySymbol || item.symbol,
+        symbol: String(item.displaySymbol || item.symbol || '').toUpperCase(),
         name: item.description || item.displaySymbol || item.symbol,
+        type: item.type || '',
       }))
+      .filter((item) => item.symbol)
 
-    const merged = [...local]
-    for (const item of remote) {
-      if (!merged.some((entry) => entry.symbol === item.symbol)) {
-        merged.push(item)
-      }
+    const upper = needle.toUpperCase()
+    const merged = []
+    for (const item of [...remote, ...local]) {
+      if (!merged.some((entry) => entry.symbol === item.symbol)) merged.push(item)
     }
-    return merged.slice(0, 8)
+    merged.sort((left, right) => {
+      const leftExact = left.symbol === upper ? 0 : 1
+      const rightExact = right.symbol === upper ? 0 : 1
+      return leftExact - rightExact
+    })
+    return merged.slice(0, 10)
   } catch {
     return local
   }
