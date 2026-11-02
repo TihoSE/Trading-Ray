@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
-import { fetchEtfHoldings, isEtfQuote } from '../services/finnhub'
+import { useLocale } from '../context/LocaleContext'
+import { HoldingsAccessError, fetchEtfHoldings, isEtfQuote } from '../services/finnhub'
 
 function formatWeight(value) {
   if (value == null || !Number.isFinite(value)) return '—'
   return `${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
 }
 
-function formatAsOf(value) {
+function formatAsOf(value, locale) {
   const [year, month, day] = String(value || '').slice(0, 10).split('-').map(Number)
   if (!year || !month || !day) return ''
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+  return new Date(year, month - 1, day).toLocaleDateString(locale === 'nl' ? 'nl-NL' : 'en-GB', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -17,6 +18,7 @@ function formatAsOf(value) {
 }
 
 export default function EtfHoldings({ quote }) {
+  const { locale, t } = useLocale()
   const isEtf = isEtfQuote(quote)
   const [status, setStatus] = useState(isEtf ? 'loading' : 'idle')
   const [holdings, setHoldings] = useState(null)
@@ -39,7 +41,7 @@ export default function EtfHoldings({ quote }) {
       })
       .catch((caught) => {
         if (cancelled) return
-        setError(caught instanceof Error ? caught.message : 'Unable to load holdings.')
+        setError(caught instanceof HoldingsAccessError ? 'plan' : 'failed')
         setStatus('error')
       })
 
@@ -52,17 +54,21 @@ export default function EtfHoldings({ quote }) {
 
   const rows = holdings?.holdings ?? []
   const visible = showAll ? rows : rows.slice(0, 10)
-  const asOf = formatAsOf(holdings?.atDate)
+  const asOf = formatAsOf(holdings?.atDate, locale)
+  const errorText = error === 'plan' ? t('etf.plan') : error === 'failed' ? t('etf.failed') : ''
 
   return (
     <section className="mt-4 rounded-2xl border border-line bg-panel p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">Holdings</p>
+          <p className="text-sm font-semibold">{t('etf.title')}</p>
           <p className="text-xs text-muted">
             {status === 'ready'
-              ? `${showAll ? rows.length : Math.min(10, rows.length)} of ${rows.length}${asOf ? ` · As of ${asOf}` : ''}`
-              : `What ${quote.symbol} holds`}
+              ? `${t('etf.count', {
+                  shown: showAll ? rows.length : Math.min(10, rows.length),
+                  total: rows.length,
+                })}${asOf ? ` · ${t('etf.asOf', { date: asOf })}` : ''}`
+              : t('etf.holds', { symbol: quote.symbol })}
           </p>
         </div>
         {status === 'ready' && rows.length > 10 ? (
@@ -73,7 +79,7 @@ export default function EtfHoldings({ quote }) {
               onClick={() => setShowAll(false)}
               className={`rounded-lg px-2.5 py-1.5 ${showAll ? 'text-slate-400 hover:bg-white/5' : 'bg-sky-400 text-slate-950'}`}
             >
-              Top 10
+              {t('etf.top')}
             </button>
             <button
               type="button"
@@ -81,7 +87,7 @@ export default function EtfHoldings({ quote }) {
               onClick={() => setShowAll(true)}
               className={`rounded-lg px-2.5 py-1.5 ${showAll ? 'bg-sky-400 text-slate-950' : 'text-slate-400 hover:bg-white/5'}`}
             >
-              All
+              {t('etf.all')}
             </button>
           </div>
         ) : null}
@@ -91,10 +97,10 @@ export default function EtfHoldings({ quote }) {
         <div className="mt-3 h-28 animate-pulse rounded-xl border border-line bg-[#070b14]" />
       ) : null}
 
-      {status === 'error' ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
+      {status === 'error' ? <p className="mt-3 text-sm text-rose-300">{errorText}</p> : null}
 
       {status === 'ready' && rows.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">No holdings reported for {quote.symbol}.</p>
+        <p className="mt-3 text-sm text-muted">{t('etf.empty', { symbol: quote.symbol })}</p>
       ) : null}
 
       {status === 'ready' && visible.length > 0 ? (
@@ -102,9 +108,9 @@ export default function EtfHoldings({ quote }) {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-[#070b14] text-xs uppercase tracking-[0.14em] text-muted">
               <tr>
-                <th className="px-3 py-2 font-medium">Name</th>
-                <th className="px-3 py-2 font-medium">Ticker</th>
-                <th className="px-3 py-2 text-right font-medium">Weight</th>
+                <th className="px-3 py-2 font-medium">{t('etf.name')}</th>
+                <th className="px-3 py-2 font-medium">{t('etf.ticker')}</th>
+                <th className="px-3 py-2 text-right font-medium">{t('etf.weight')}</th>
               </tr>
             </thead>
             <tbody>

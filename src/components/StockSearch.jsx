@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Loader2, Plus, Search } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
 import { QuoteNotFoundError, fetchSearchQuote, searchSymbols } from '../services/finnhub'
 import WatchButton from './WatchButton'
@@ -17,6 +18,7 @@ function formatPrice(value) {
 export default function StockSearch() {
   const navigate = useNavigate()
   const { addToDashboard, openDetail, isOnDashboard } = useMarket()
+  const { t } = useLocale()
   const rootRef = useRef(null)
   const [query, setQuery] = useState('')
   const [suggestions, setSuggestions] = useState([])
@@ -43,6 +45,7 @@ export default function StockSearch() {
       return undefined
     }
 
+    // Only client-side throttle for market search: one request per pause, not per key.
     const timer = window.setTimeout(async () => {
       const matches = await searchSymbols(needle)
       setSuggestions(matches)
@@ -63,7 +66,7 @@ export default function StockSearch() {
   async function loadQuote(symbol) {
     const needle = symbol.trim()
     if (!needle) {
-      setError('Enter a company name or ticker.')
+      setError(t('search.empty'))
       setOpen(true)
       return
     }
@@ -85,9 +88,7 @@ export default function StockSearch() {
       setQuery(quote.symbol)
     } catch (caught) {
       const message =
-        caught instanceof QuoteNotFoundError
-          ? 'No match for that company or ticker.'
-          : 'Unable to load that quote. Try another search.'
+        caught instanceof QuoteNotFoundError ? t('search.noMatch') : t('search.failed')
       setError(message)
     } finally {
       setLoading(false)
@@ -129,15 +130,15 @@ export default function StockSearch() {
               setError('')
             }}
             onFocus={() => setOpen(true)}
-            placeholder="Search any company or ticker"
+            placeholder={t('search.placeholder')}
             className="w-full rounded-xl border border-line bg-panel py-2.5 pr-16 pl-10 text-sm text-ink outline-none placeholder:text-slate-500 focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20"
-            aria-label="Search company or ticker"
+            aria-label={t('search.label')}
           />
           <button
             type="submit"
             className="absolute right-1.5 rounded-lg bg-sky-400 px-2.5 py-1.5 text-xs font-semibold text-slate-950 hover:bg-sky-300"
           >
-            Go
+            {t('search.go')}
           </button>
         </label>
       </form>
@@ -147,7 +148,7 @@ export default function StockSearch() {
           {loading ? (
             <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted">
               <Loader2 size={16} className="animate-spin text-sky-300" />
-              Looking up quote…
+              {t('search.looking')}
             </div>
           ) : null}
 
@@ -176,7 +177,7 @@ export default function StockSearch() {
                     onClick={() => handleDetails(result)}
                     className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-semibold hover:bg-white/5"
                   >
-                    Details
+                    {t('search.details')}
                   </button>
                   <button
                     type="button"
@@ -185,7 +186,7 @@ export default function StockSearch() {
                     className="inline-flex items-center gap-1 rounded-lg bg-sky-400 px-2.5 py-1.5 text-xs font-semibold text-slate-950 hover:bg-sky-300 disabled:opacity-50"
                   >
                     <Plus size={12} />
-                    {isOnDashboard(result.symbol) ? 'On grid' : 'Add'}
+                    {isOnDashboard(result.symbol) ? t('search.onGrid') : t('search.add')}
                   </button>
                 </div>
               </div>

@@ -1,5 +1,7 @@
 import { Bell, LogOut, Menu } from 'lucide-react'
+import { useAccountPrompt } from '../context/AccountPromptContext'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import StockSearch from './StockSearch'
 
 function avatarUrl(name) {
@@ -8,6 +10,8 @@ function avatarUrl(name) {
 
 export default function Navbar({ onMenuClick }) {
   const { user, logout } = useAuth()
+  const { openAuth } = useAccountPrompt()
+  const { locale, setLocale, t } = useLocale()
 
   return (
     <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-[#070b14]/80 px-4 py-3 backdrop-blur-xl sm:px-6">
@@ -15,17 +19,37 @@ export default function Navbar({ onMenuClick }) {
         type="button"
         className="rounded-xl p-2 text-slate-300 hover:bg-white/5 lg:hidden"
         onClick={onMenuClick}
-        aria-label="Open sidebar"
+        aria-label={t('nav.openSidebar')}
       >
         <Menu size={20} />
       </button>
 
       <StockSearch />
 
+      <div
+        role="group"
+        aria-label={t('lang.label')}
+        className="flex shrink-0 rounded-xl border border-line p-0.5"
+      >
+        {['en', 'nl'].map((code) => (
+          <button
+            key={code}
+            type="button"
+            aria-pressed={locale === code}
+            onClick={() => setLocale(code)}
+            className={`rounded-lg px-2 py-1.5 text-xs font-semibold ${
+              locale === code ? 'bg-sky-400 text-slate-950' : 'text-slate-400 hover:text-ink'
+            }`}
+          >
+            {code.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
       <button
         type="button"
         className="hidden rounded-xl border border-line bg-panel p-2.5 text-slate-300 hover:bg-white/5 sm:grid"
-        aria-label="Notifications"
+        aria-label={t('nav.notifications')}
       >
         <Bell size={18} />
       </button>
@@ -52,10 +76,18 @@ export default function Navbar({ onMenuClick }) {
             className="inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-white/5"
           >
             <LogOut size={14} />
-            Logout
+            {t('nav.logout')}
           </button>
         </div>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          onClick={() => openAuth('login')}
+          className="shrink-0 rounded-xl bg-sky-400 px-3 py-2 text-sm font-semibold text-slate-950 hover:bg-sky-300"
+        >
+          {t('nav.login')}
+        </button>
+      )}
     </header>
   )
 }

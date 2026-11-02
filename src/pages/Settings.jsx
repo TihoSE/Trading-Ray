@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import { getApiKey } from '../services/finnhub'
 
 function ApiKeyForm() {
+  const { t } = useLocale()
   const [key, setKey] = useState(() => (import.meta.env.PROD ? '' : getApiKey()))
   const [saved, setSaved] = useState(false)
 
@@ -20,33 +22,27 @@ function ApiKeyForm() {
   if (import.meta.env.PROD) {
     return (
       <section className="max-w-xl">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
-        <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
-        <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">
-          Live quotes use the market data key configured for this deployment. This deployment does
-          not read or store a key in the browser.
-        </p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('settings.kicker')}</p>
+        <h1 className="mt-1 text-2xl font-semibold">{t('settings.title')}</h1>
+        <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">{t('settings.prod')}</p>
       </section>
     )
   }
 
   return (
     <section className="max-w-xl">
-      <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
-      <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
-      <p className="mt-2 text-sm text-muted">
-        Store a market data key locally for development. If the key is missing or the request fails,
-        the dashboard falls back to sample quotes.
-      </p>
+      <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('settings.kicker')}</p>
+      <h1 className="mt-1 text-2xl font-semibold">{t('settings.title')}</h1>
+      <p className="mt-2 text-sm text-muted">{t('settings.devHint')}</p>
 
       <form onSubmit={handleSave} className="mt-6 space-y-4 rounded-2xl border border-line bg-panel p-5">
         <label className="block text-sm font-medium">
-          Market data key
+          {t('settings.key')}
           <input
             type="password"
             value={key}
             onChange={(event) => setKey(event.target.value)}
-            placeholder="Optional · falls back to mock data"
+            placeholder={t('settings.placeholder')}
             className="mt-2 w-full rounded-xl border border-line bg-[#070b14] px-3 py-2.5 text-sm outline-none focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20"
           />
         </label>
@@ -54,9 +50,9 @@ function ApiKeyForm() {
           type="submit"
           className="rounded-xl bg-sky-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-sky-300"
         >
-          Save key
+          {t('settings.save')}
         </button>
-        {saved ? <p className="text-sm text-emerald-400">Saved. Reload the dashboard to fetch live quotes.</p> : null}
+        {saved ? <p className="text-sm text-emerald-400">{t('settings.saved')}</p> : null}
       </form>
     </section>
   )
@@ -64,15 +60,14 @@ function ApiKeyForm() {
 
 export default function Settings() {
   const { isAdmin } = useAuth()
+  const { t } = useLocale()
 
   if (!isAdmin) {
     return (
       <section className="max-w-xl">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
-        <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
-        <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">
-          Only an admin can view or change the market data key.
-        </p>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('settings.kicker')}</p>
+        <h1 className="mt-1 text-2xl font-semibold">{t('settings.title')}</h1>
+        <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">{t('settings.adminOnly')}</p>
       </section>
     )
   }

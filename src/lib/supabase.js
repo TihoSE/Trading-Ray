@@ -1,3 +1,12 @@
+/**
+ * Public Supabase client. The anon key only identifies the project; it is
+ * shipped in the bundle on purpose. Authorization is Row Level Security plus
+ * `auth.uid()` inside the SQL functions, not secrecy of this key.
+ *
+ * Vite inlines `import.meta.env.VITE_*` when it builds. Changing a variable in
+ * Vercel does nothing until the next deploy, which is why a missing key fails
+ * the whole app here instead of failing later on the first request.
+ */
 import { createClient } from '@supabase/supabase-js'
 
 function readEnv(value, name) {

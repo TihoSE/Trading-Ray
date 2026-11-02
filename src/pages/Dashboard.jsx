@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import StockCard from '../components/StockCard'
+import { useLocale } from '../context/LocaleContext'
 import { useMarket } from '../context/MarketContext'
 import { POPULAR_SYMBOLS, fetchQuotes } from '../services/finnhub'
 
 export default function Dashboard() {
   const { extraQuotes, openDetail } = useMarket()
+  const { t } = useLocale()
   const [quotes, setQuotes] = useState([])
   const [status, setStatus] = useState('loading')
 
@@ -38,10 +40,10 @@ export default function Dashboard() {
     <section>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted">Overview</p>
-          <h1 className="mt-1 text-2xl font-semibold">Market dashboard</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('dash.kicker')}</p>
+          <h1 className="mt-1 text-2xl font-semibold">{t('dash.title')}</h1>
         </div>
-        <p className="text-sm text-muted">Search a company or ticker and add it to the grid</p>
+        <p className="text-sm text-muted">{t('dash.hint')}</p>
       </div>
 
       {status === 'loading' ? (

@@ -1,9 +1,15 @@
 export const STARTING_CASH = 10_000
 
+let moneyLocale = 'en-GB'
+
+export function setMoneyLocale(locale) {
+  moneyLocale = locale === 'nl' ? 'nl-NL' : 'en-GB'
+}
+
 export function formatEur(value) {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return '—'
-  return amount.toLocaleString('nl-NL', {
+  return amount.toLocaleString(moneyLocale, {
     style: 'currency',
     currency: 'EUR',
   })

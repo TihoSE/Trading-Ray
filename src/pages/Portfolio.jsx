@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useAccountPrompt } from '../context/AccountPromptContext'
+import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
 import { STARTING_CASH, formatEur, formatSignedEur, parseCash } from '../lib/money'
 import { fetchQuote, lookupName } from '../services/finnhub'
 
-function formatWhen(value) {
+function formatWhen(value, locale) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString('nl-NL', {
+  return date.toLocaleString(locale === 'nl' ? 'nl-NL' : 'en-GB', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
@@ -16,6 +19,9 @@ function formatWhen(value) {
 }
 
 function CashEditor() {
+  const { user } = useAuth()
+  const { openPrompt } = useAccountPrompt()
+  const { t } = useLocale()
   const { cash, ready, setPaperCash } = usePortfolio()
   const [draft, setDraft] = useState(null)
   const [pending, setPending] = useState(false)
@@ -24,16 +30,20 @@ function CashEditor() {
   const shown = draft ?? (cash == null ? '' : String(cash))
 
   async function apply(next) {
+    if (!user) {
+      openPrompt()
+      return
+    }
     setPending(true)
     setMessage('')
     try {
       await setPaperCash(next)
       setDraft(null)
       setTone('ok')
-      setMessage('Paper cash updated.')
+      setMessage(t('portfolio.updated'))
     } catch (error) {
       setTone('err')
-      setMessage(error instanceof Error ? error.message : 'Could not update cash.')
+      setMessage(error instanceof Error ? error.message : t('portfolio.updateFailed'))
     } finally {
       setPending(false)
     }
@@ -44,18 +54,22 @@ function CashEditor() {
     const next = parseCash(shown)
     if (next == null) {
       setTone('err')
-      setMessage('Enter an amount from €0 to €1.000.000.000.')
+      setMessage(t('portfolio.badAmount'))
       return
     }
     void apply(next)
   }
 
   function addAmount(delta) {
+    if (!user) {
+      openPrompt()
+      return
+    }
     if (cash == null) return
     const next = Math.round((cash + delta) * 100) / 100
     if (next > 1_000_000_000) {
       setTone('err')
-      setMessage('Cash cannot go above €1.000.000.000.')
+      setMessage(t('portfolio.tooHigh'))
       return
     }
     void apply(next)
@@ -63,52 +77,50 @@ function CashEditor() {
 
   return (
     <form onSubmit={applyDraft} className="mt-4 rounded-2xl border border-line bg-panel p-5">
-      <p className="text-sm font-semibold">Adjust paper cash</p>
-      <p className="mt-1 text-sm text-muted">
-        Practice money only. Open positions stay in the account, and the equity result ignores deposits and withdrawals.
-      </p>
+      <p className="text-sm font-semibold">{t('portfolio.adjustTitle')}</p>
+      <p className="mt-1 text-sm text-muted">{t('portfolio.adjustBody')}</p>
       <label className="mt-4 block text-sm font-medium">
-        Balance
+        {t('portfolio.balance')}
         <input
           type="text"
           inputMode="decimal"
           value={shown}
           onChange={(event) => setDraft(event.target.value)}
-          disabled={!ready || cash == null || pending}
+          disabled={Boolean(user) && (!ready || cash == null || pending)}
           className="mt-2 w-full rounded-xl border border-line bg-[#070b14] px-3 py-2.5 text-sm outline-none focus:border-sky-400/50 focus:ring-2 focus:ring-sky-400/20 disabled:opacity-50"
         />
       </label>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="submit"
-          disabled={!ready || cash == null || pending}
+          disabled={Boolean(user) && (!ready || cash == null || pending)}
           className="rounded-xl bg-sky-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-sky-300 disabled:opacity-50"
         >
-          {pending ? 'Saving…' : 'Set balance'}
+          {pending ? t('portfolio.saving') : t('portfolio.setBalance')}
         </button>
         <button
           type="button"
           onClick={() => addAmount(1000)}
-          disabled={!ready || cash == null || pending}
+          disabled={Boolean(user) && (!ready || cash == null || pending)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          + €1.000
+          {t('portfolio.add1000')}
         </button>
         <button
           type="button"
           onClick={() => addAmount(10000)}
-          disabled={!ready || cash == null || pending}
+          disabled={Boolean(user) && (!ready || cash == null || pending)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          + €10.000
+          {t('portfolio.add10000')}
         </button>
         <button
           type="button"
           onClick={() => apply(STARTING_CASH)}
-          disabled={!ready || cash == null || pending}
+          disabled={Boolean(user) && (!ready || cash == null || pending)}
           className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold hover:bg-white/5 disabled:opacity-50"
         >
-          Set to €10.000
+          {t('portfolio.reset')}
         </button>
       </div>
       {message ? (
@@ -120,6 +132,7 @@ function CashEditor() {
 
 export default function Portfolio() {
   const { cash, funded, positions, trades, ready, error } = usePortfolio()
+  const { locale, t } = useLocale()
   const [marks, setMarks] = useState({})
   const tickerKey = positions.map((position) => position.ticker).join(',')
 
@@ -178,11 +191,10 @@ export default function Portfolio() {
 
   return (
     <section>
-      <p className="text-xs uppercase tracking-[0.2em] text-muted">Simulation</p>
-      <h1 className="mt-1 text-2xl font-semibold">Portfolio</h1>
+      <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('portfolio.kicker')}</p>
+      <h1 className="mt-1 text-2xl font-semibold">{t('portfolio.title')}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">
-        Virtual account with {formatEur(STARTING_CASH)} starting cash. Buys and sells fill at the quoted price,
-        booked 1-for-1 in euros.
+        {t('portfolio.intro', { cash: formatEur(STARTING_CASH) })}
       </p>
 
       {error ? (
@@ -193,15 +205,15 @@ export default function Portfolio() {
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
         <article className="rounded-2xl border border-line bg-panel p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Cash</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">{t('portfolio.cash')}</p>
           <p className="mt-2 text-2xl font-semibold">{ready && cash != null ? formatEur(cash) : '—'}</p>
         </article>
         <article className="rounded-2xl border border-line bg-panel p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Holdings</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">{t('portfolio.holdings')}</p>
           <p className="mt-2 text-2xl font-semibold">{ready ? formatEur(holdingsValue) : '—'}</p>
         </article>
         <article className="rounded-2xl border border-line bg-panel p-5">
-          <p className="text-xs uppercase tracking-[0.16em] text-muted">Equity</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-muted">{t('portfolio.equity')}</p>
           <p className="mt-2 text-2xl font-semibold">{ready && cash != null ? formatEur(equity) : '—'}</p>
           {ready && cash != null ? (
             <p className={`mt-2 text-sm font-medium ${tone}`}>
@@ -214,18 +226,18 @@ export default function Portfolio() {
 
       <CashEditor />
 
-      <h2 className="mt-8 text-lg font-semibold">Positions</h2>
+      <h2 className="mt-8 text-lg font-semibold">{t('portfolio.positions')}</h2>
       {!ready ? (
         <div className="mt-3 h-28 animate-pulse rounded-2xl border border-line bg-panel" />
       ) : positions.length === 0 ? (
         <div className="mt-3 rounded-2xl border border-dashed border-line bg-panel px-6 py-10 text-center">
-          <p className="font-semibold">No open positions</p>
-          <p className="mt-2 text-sm text-muted">Open a quote and use Buy to spend paper cash.</p>
+          <p className="font-semibold">{t('portfolio.none')}</p>
+          <p className="mt-2 text-sm text-muted">{t('portfolio.noneHint')}</p>
           <Link
             to="/"
             className="mt-5 inline-flex rounded-xl bg-sky-400 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-sky-300"
           >
-            Back to dashboard
+            {t('portfolio.back')}
           </Link>
         </div>
       ) : (
@@ -233,12 +245,12 @@ export default function Portfolio() {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-panel text-xs uppercase tracking-[0.14em] text-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Ticker</th>
-                <th className="px-4 py-3 font-medium">Shares</th>
-                <th className="px-4 py-3 font-medium">Avg cost</th>
-                <th className="px-4 py-3 font-medium">Mark</th>
-                <th className="px-4 py-3 font-medium">Value</th>
-                <th className="px-4 py-3 font-medium">Unrealized</th>
+                <th className="px-4 py-3 font-medium">{t('portfolio.ticker')}</th>
+                <th className="px-4 py-3 font-medium">{t('portfolio.shares')}</th>
+                <th className="px-4 py-3 font-medium">{t('portfolio.avg')}</th>
+                <th className="px-4 py-3 font-medium">{t('portfolio.mark')}</th>
+                <th className="px-4 py-3 font-medium">{t('portfolio.value')}</th>
+                <th className="px-4 py-3 font-medium">{t('portfolio.unrealized')}</th>
               </tr>
             </thead>
             <tbody>
@@ -252,7 +264,7 @@ export default function Portfolio() {
                   <td className="px-4 py-3">{formatEur(row.avgCost)}</td>
                   <td className="px-4 py-3">
                     {formatEur(row.mark)}
-                    {row.priced ? '' : <span className="ml-2 text-xs text-muted">cost</span>}
+                    {row.priced ? '' : <span className="ml-2 text-xs text-muted">{t('portfolio.cost')}</span>}
                   </td>
                   <td className="px-4 py-3">{formatEur(row.marketValue)}</td>
                   <td className={`px-4 py-3 ${row.unrealized >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
@@ -265,9 +277,9 @@ export default function Portfolio() {
         </div>
       )}
 
-      <h2 className="mt-8 text-lg font-semibold">Recent trades</h2>
+      <h2 className="mt-8 text-lg font-semibold">{t('portfolio.trades')}</h2>
       {!ready || trades.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">{ready ? 'No trades yet.' : 'Loading trades…'}</p>
+        <p className="mt-3 text-sm text-muted">{ready ? t('portfolio.noTrades') : t('portfolio.loadingTrades')}</p>
       ) : (
         <ul className="mt-3 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
           {trades.map((item) => (
@@ -275,17 +287,17 @@ export default function Portfolio() {
               <div>
                 <p className="font-medium">
                   <span className={item.side === 'buy' ? 'text-emerald-300' : 'text-rose-300'}>
-                    {item.side === 'buy' ? 'Buy' : 'Sell'}
+                    {item.side === 'buy' ? t('portfolio.buy') : t('portfolio.sell')}
                   </span>{' '}
                   {item.shares} {item.ticker}
                 </p>
-                <p className="text-xs text-muted">{formatWhen(item.createdAt)}</p>
+                <p className="text-xs text-muted">{formatWhen(item.createdAt, locale)}</p>
               </div>
               <div className="text-right">
                 <p>{formatEur(item.amount)}</p>
                 {item.realizedPnl != null ? (
                   <p className={`text-xs ${item.realizedPnl >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                    Realized {formatSignedEur(item.realizedPnl)}
+                    {t('portfolio.realized', { amount: formatSignedEur(item.realizedPnl) })}
                   </p>
                 ) : null}
               </div>

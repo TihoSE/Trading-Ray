@@ -31,6 +31,10 @@ export function AuthProvider({ children }) {
     let active = true
     let request = 0
 
+    // `request` invalidates an older hydrate if login and logout overlap.
+    // Role is read from `profiles`, never from user_metadata: the user can edit
+    // metadata, so trusting it would let anyone grant themselves admin.
+    // A missing or failed profile row fails closed to `user`.
     async function hydrate(session) {
       const current = ++request
       const authUser = session?.user ?? null
@@ -87,7 +91,7 @@ export function AuthProvider({ children }) {
         })
         if (error) throw new Error(error.message)
         if (!data.session) {
-          return 'Account created. Confirm your email, then log in.'
+          return 'confirm-email'
         }
         return null
       },

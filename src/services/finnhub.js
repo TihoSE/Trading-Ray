@@ -1,3 +1,16 @@
+/**
+ * Market data is requested from the browser. There is no backend proxy and no
+ * shared rate-limit bucket. Finnhub's free quota is about 60 calls a minute.
+ * The only throttle in this app is the 220ms search debounce in StockSearch,
+ * which collapses keystrokes; opening a full dashboard still fires one quote
+ * request per card. Failures fall back to sample quotes so the UI stays usable.
+ *
+ * `/etf/holdings` is a separate, paid resource. A 401/403 becomes
+ * HoldingsAccessError. Inventing weights would look like real fund data.
+ *
+ * In production `getApiKey` ignores localStorage. A visitor of the deployed
+ * site must not be able to replace the key the host configured.
+ */
 const QUOTE_URL = 'https://finnhub.io/api/v1/quote'
 const SEARCH_URL = 'https://finnhub.io/api/v1/search'
 const CANDLE_URL = 'https://finnhub.io/api/v1/stock/candle'
@@ -96,6 +109,7 @@ export class QuoteNotFoundError extends Error {
   }
 }
 
+/** Dev may use a browser-stored key. Production builds only see the env key Vite inlined. */
 export function getApiKey() {
   const envKey = import.meta.env.VITE_FINNHUB_API_KEY?.trim() || ''
   if (import.meta.env.PROD) return envKey
@@ -153,6 +167,11 @@ function isEmptyQuote(data) {
   return typeof data?.c !== 'number' || data.c === 0 || data.d == null
 }
 
+/**
+ * Live quote, with sample data when the key is missing or the request fails.
+ * Search uses `fallbackMock: false` so an unknown ticker does not pretend to
+ * have a price.
+ */
 export async function fetchQuote(symbol, { fallbackMock = true } = {}) {
   const ticker = symbol.trim().toUpperCase()
   const token = getApiKey()
@@ -228,6 +247,10 @@ function stockHoldings(holdings) {
   return equities.length > 0 ? equities : holdings
 }
 
+/**
+ * Pages `/etf/holdings` with `skip` until the reported total is reached or a
+ * short page arrives. Holdings are then sorted by weight for the top-10 view.
+ */
 export async function fetchEtfHoldings(symbol) {
   const ticker = symbol.trim().toUpperCase()
   const token = getApiKey()
@@ -292,6 +315,11 @@ function localSearch(query) {
   ).slice(0, 8)
 }
 
+/**
+ * Company-name search. Remote hits keep Finnhub's relevance order; an exact
+ * ticker is moved to the front. Without a key, only the small local directory
+ * is searched.
+ */
 export async function searchSymbols(query) {
   const needle = query.trim()
   const local = localSearch(needle)

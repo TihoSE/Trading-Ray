@@ -60,6 +60,10 @@ insert into public.portfolios (user_id)
 select id from auth.users
 on conflict (user_id) do nothing;
 
+-- RLS is select-only. Authenticated clients cannot insert or update these
+-- tables; those grants are revoked below. Writes go through SECURITY DEFINER
+-- functions, which bypass RLS and therefore check auth.uid() themselves.
+-- search_path is pinned so a caller cannot shadow objects in public.
 alter table public.portfolios enable row level security;
 alter table public.positions enable row level security;
 alter table public.trades enable row level security;
@@ -114,6 +118,10 @@ begin
 end;
 $$;
 
+-- FOR UPDATE on the portfolio row serializes this user's orders. The fill
+-- price is accepted from the client because Postgres cannot call the quote
+-- provider. That is a deliberate paper-trading tradeoff, not a design for
+-- real money.
 create or replace function public.place_trade(
   p_ticker text,
   p_side text,

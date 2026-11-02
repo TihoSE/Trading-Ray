@@ -1,4 +1,5 @@
 import { TrendingDown, TrendingUp } from 'lucide-react'
+import { useLocale } from '../context/LocaleContext'
 import WatchButton from './WatchButton'
 
 function formatPrice(value) {
@@ -10,6 +11,7 @@ function formatPrice(value) {
 }
 
 export default function StockCard({ quote, name, onOpen }) {
+  const { t } = useLocale()
   const isUp = quote.change >= 0
   const tone = isUp ? 'text-emerald-400' : 'text-rose-400'
   const badge = isUp
@@ -27,7 +29,7 @@ export default function StockCard({ quote, name, onOpen }) {
           <WatchButton symbol={quote.symbol} />
           <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${badge}`}>
             {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-            {isUp ? 'Gain' : 'Loss'}
+            {isUp ? t('card.gain') : t('card.loss')}
           </span>
         </div>
       </div>
@@ -45,7 +47,8 @@ export default function StockCard({ quote, name, onOpen }) {
           </span>
         </div>
         <p className="mt-4 text-xs text-muted">
-          Prev close {formatPrice(quote.previousClose)} · {quote.source === 'live' ? 'Live' : 'Sample'}
+          {t('card.prevClose', { price: formatPrice(quote.previousClose) })} ·{' '}
+          {quote.source === 'live' ? t('card.live') : t('card.sample')}
         </p>
       </button>
     </article>

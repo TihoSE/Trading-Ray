@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { useLocale } from '../context/LocaleContext'
 import { useCandleSeries } from '../hooks/useCandleSeries'
 import { CANDLE_TIMEFRAMES, getCandleTimeframe } from '../services/finnhub'
 
@@ -36,18 +37,19 @@ function ChartTooltip({ active, payload }) {
 
 export default function StockChart({ quote }) {
   const [timeframe, setTimeframe] = useState('1D')
+  const { t } = useLocale()
   const { points, source, status } = useCandleSeries(quote, timeframe)
   const option = getCandleTimeframe(timeframe)
   const stroke = quote.change >= 0 ? GAIN : LOSS
-  const sourceLabel = status === 'loading' ? 'Loading' : source === 'live' ? 'Live' : 'Sample'
+  const sourceLabel = status === 'loading' ? t('common.loading') : source === 'live' ? t('card.live') : t('card.sample')
 
   return (
     <div className="mt-4 rounded-2xl border border-line bg-panel p-4">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold">Price trend</p>
+          <p className="text-sm font-semibold">{t('chart.title')}</p>
           <p className="text-xs text-muted">
-            {option.caption} · {sourceLabel}
+            {t(`chart.${option.id}`)} · {sourceLabel}
           </p>
         </div>
       </div>

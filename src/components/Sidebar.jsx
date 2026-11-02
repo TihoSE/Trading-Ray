@@ -1,18 +1,20 @@
 import { LayoutDashboard, LineChart, Settings, Wallet, X } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 import { usePortfolio } from '../context/PortfolioContext'
 import { formatEur } from '../lib/money'
 
 const links = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/watchlist', label: 'Watchlist', icon: LineChart },
-  { to: '/portfolio', label: 'Portfolio', icon: Wallet },
-  { to: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
+  { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
+  { to: '/watchlist', labelKey: 'nav.watchlist', icon: LineChart },
+  { to: '/portfolio', labelKey: 'nav.portfolio', icon: Wallet },
+  { to: '/settings', labelKey: 'nav.settings', icon: Settings, adminOnly: true },
 ]
 
 export default function Sidebar({ open, onClose }) {
-  const { isAdmin } = useAuth()
+  const { user, isAdmin } = useAuth()
+  const { t } = useLocale()
   const { cash, ready } = usePortfolio()
   const visibleLinks = links.filter((link) => !link.adminOnly || isAdmin)
   return (
@@ -20,7 +22,7 @@ export default function Sidebar({ open, onClose }) {
       {open ? (
         <button
           type="button"
-          aria-label="Close navigation overlay"
+          aria-label={t('sidebar.closeOverlay')}
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           onClick={onClose}
         />
@@ -38,21 +40,21 @@ export default function Sidebar({ open, onClose }) {
             </div>
             <div>
               <p className="text-sm font-semibold tracking-wide text-ink">Trading-Ray</p>
-              <p className="text-xs text-muted">Live Stock Dashboard</p>
+              <p className="text-xs text-muted">{t('sidebar.tagline')}</p>
             </div>
           </div>
           <button
             type="button"
             className="rounded-lg p-2 text-muted hover:bg-white/5 lg:hidden"
             onClick={onClose}
-            aria-label="Close sidebar"
+            aria-label={t('sidebar.close')}
           >
             <X size={18} />
           </button>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {visibleLinks.map(({ to, label, icon: Icon }) => (
+          {visibleLinks.map(({ to, labelKey, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -67,16 +69,22 @@ export default function Sidebar({ open, onClose }) {
               }
             >
               <Icon size={18} />
-              {label}
+              {t(labelKey)}
             </NavLink>
           ))}
         </nav>
 
         <div className="m-4 rounded-2xl border border-line bg-panel-2 p-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted">Session</p>
-          <p className="mt-2 text-sm text-ink">Market data may be delayed.</p>
-          <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted">Paper cash</p>
-          <p className="mt-1 text-sm font-semibold text-ink">{ready && cash != null ? formatEur(cash) : '—'}</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted">{t('sidebar.session')}</p>
+          <p className="mt-2 text-sm text-ink">{t('sidebar.delayed')}</p>
+          {user ? (
+            <>
+              <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted">{t('sidebar.paperCash')}</p>
+              <p className="mt-1 text-sm font-semibold text-ink">{ready && cash != null ? formatEur(cash) : '—'}</p>
+            </>
+          ) : (
+            <p className="mt-3 text-sm text-ink">{t('sidebar.readOnly')}</p>
+          )}
         </div>
       </aside>
     </>

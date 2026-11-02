@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { LineChart } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useLocale } from '../context/LocaleContext'
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -8,26 +9,26 @@ function validate({ mode, name, email, password, confirmPassword }) {
   const errors = {}
 
   if (mode === 'register' && name.trim().length < 2) {
-    errors.name = 'Enter a name with at least 2 characters.'
+    errors.name = 'auth.err.name'
   }
 
   if (!email.trim()) {
-    errors.email = 'Email is required.'
+    errors.email = 'auth.err.emailRequired'
   } else if (!EMAIL_PATTERN.test(email.trim())) {
-    errors.email = 'Enter a valid email address.'
+    errors.email = 'auth.err.emailInvalid'
   }
 
   if (!password) {
-    errors.password = 'Password is required.'
+    errors.password = 'auth.err.passwordRequired'
   } else if (password.length < 8) {
-    errors.password = 'Password must be at least 8 characters.'
+    errors.password = 'auth.err.passwordShort'
   }
 
   if (mode === 'register') {
     if (!confirmPassword) {
-      errors.confirmPassword = 'Confirm your password.'
+      errors.confirmPassword = 'auth.err.confirmRequired'
     } else if (confirmPassword !== password) {
-      errors.confirmPassword = 'Passwords do not match.'
+      errors.confirmPassword = 'auth.err.confirmMismatch'
     }
   }
 
@@ -39,9 +40,10 @@ const fieldClass =
 const fieldOk = 'border-line focus:border-sky-400/50 focus:ring-sky-400/20'
 const fieldErr = 'border-rose-400/60 focus:border-rose-400 focus:ring-rose-400/20'
 
-export default function Auth() {
+export default function Auth({ initialMode = 'login', embedded = false }) {
   const { login, register } = useAuth()
-  const [mode, setMode] = useState('login')
+  const { t } = useLocale()
+  const [mode, setMode] = useState(initialMode)
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -80,7 +82,8 @@ export default function Auth() {
         await login(form.email, form.password)
       } else {
         const notice = await register(form.name, form.email, form.password)
-        if (notice) setFormError(notice)
+        if (notice === 'confirm-email') setFormError(t('auth.confirmEmail'))
+        else if (notice) setFormError(notice)
       }
     } catch (error) {
       setFormError(error.message)
@@ -90,15 +93,21 @@ export default function Auth() {
   }
 
   return (
-    <div className="grid min-h-screen place-items-center bg-[#070b14] px-4 py-10">
-      <div className="w-full max-w-md rounded-3xl border border-line bg-panel p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-8">
+    <div className={embedded ? '' : 'grid min-h-screen place-items-center bg-[#070b14] px-4 py-10'}>
+      <div
+        className={
+          embedded
+            ? 'w-full'
+            : 'w-full max-w-md rounded-3xl border border-line bg-panel p-6 shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:p-8'
+        }
+      >
         <div className="mb-6 flex items-center gap-3">
           <div className="grid h-11 w-11 place-items-center rounded-xl bg-sky-400/15 text-sky-300 ring-1 ring-sky-400/30">
             <LineChart size={20} />
           </div>
           <div>
             <p className="text-sm font-semibold">Trading-Ray</p>
-            <p className="text-xs text-muted">{isLogin ? 'Sign in to the desk' : 'Create your trading desk'}</p>
+            <p className="text-xs text-muted">{isLogin ? t('auth.signIn') : t('auth.createDesk')}</p>
           </div>
         </div>
 
@@ -112,7 +121,7 @@ export default function Auth() {
               isLogin ? 'bg-sky-400 text-slate-950' : 'text-muted hover:text-ink'
             }`}
           >
-            Login
+            {t('auth.login')}
           </button>
           <button
             type="button"
@@ -123,31 +132,31 @@ export default function Auth() {
               !isLogin ? 'bg-sky-400 text-slate-950' : 'text-muted hover:text-ink'
             }`}
           >
-            Sign Up
+            {t('auth.signUp')}
           </button>
         </div>
 
-        <h1 className="mt-5 text-2xl font-semibold">{isLogin ? 'Login' : 'Sign Up'}</h1>
+        <h1 className="mt-5 text-2xl font-semibold">{isLogin ? t('auth.login') : t('auth.signUp')}</h1>
         <p className="mt-1 text-sm text-muted">
-          {isLogin ? 'Welcome back. Use your desk credentials.' : 'Register with an email and a strong password.'}
+          {isLogin ? t('auth.welcome') : t('auth.registerHint')}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
           {isLogin ? null : (
             <label className="block text-sm font-medium">
-              Name
+              {t('auth.name')}
               <input
                 value={form.name}
                 onChange={(event) => updateField('name', event.target.value)}
                 autoComplete="name"
                 className={`${fieldClass} ${errors.name ? fieldErr : fieldOk}`}
               />
-              {errors.name ? <p className="mt-1 text-xs text-rose-400">{errors.name}</p> : null}
+              {errors.name ? <p className="mt-1 text-xs text-rose-400">{t(errors.name)}</p> : null}
             </label>
           )}
 
           <label className="block text-sm font-medium">
-            Email
+            {t('auth.email')}
             <input
               type="email"
               value={form.email}
@@ -155,11 +164,11 @@ export default function Auth() {
               autoComplete="email"
               className={`${fieldClass} ${errors.email ? fieldErr : fieldOk}`}
             />
-            {errors.email ? <p className="mt-1 text-xs text-rose-400">{errors.email}</p> : null}
+            {errors.email ? <p className="mt-1 text-xs text-rose-400">{t(errors.email)}</p> : null}
           </label>
 
           <label className="block text-sm font-medium">
-            Password
+            {t('auth.password')}
             <input
               type="password"
               value={form.password}
@@ -167,12 +176,12 @@ export default function Auth() {
               autoComplete={isLogin ? 'current-password' : 'new-password'}
               className={`${fieldClass} ${errors.password ? fieldErr : fieldOk}`}
             />
-            {errors.password ? <p className="mt-1 text-xs text-rose-400">{errors.password}</p> : null}
+            {errors.password ? <p className="mt-1 text-xs text-rose-400">{t(errors.password)}</p> : null}
           </label>
 
           {isLogin ? null : (
             <label className="block text-sm font-medium">
-              Confirm password
+              {t('auth.confirm')}
               <input
                 type="password"
                 value={form.confirmPassword}
@@ -181,7 +190,7 @@ export default function Auth() {
                 className={`${fieldClass} ${errors.confirmPassword ? fieldErr : fieldOk}`}
               />
               {errors.confirmPassword ? (
-                <p className="mt-1 text-xs text-rose-400">{errors.confirmPassword}</p>
+                <p className="mt-1 text-xs text-rose-400">{t(errors.confirmPassword)}</p>
               ) : null}
             </label>
           )}
@@ -197,7 +206,7 @@ export default function Auth() {
             disabled={submitting}
             className="w-full rounded-xl bg-sky-400 py-2.5 text-sm font-semibold text-slate-950 hover:bg-sky-300 disabled:opacity-60"
           >
-            {isLogin ? 'Login' : 'Create account'}
+            {isLogin ? t('auth.submitLogin') : t('auth.submitRegister')}
           </button>
         </form>
 
@@ -206,7 +215,7 @@ export default function Auth() {
           onClick={toggleMode}
           className="mt-5 w-full text-center text-sm text-muted hover:text-ink"
         >
-          {isLogin ? 'Need an account? Sign Up' : 'Already registered? Login'}
+          {isLogin ? t('auth.needAccount') : t('auth.haveAccount')}
         </button>
       </div>
     </div>

@@ -45,6 +45,19 @@ function schemaHint(error) {
   return message || 'Could not load portfolio.'
 }
 
+/**
+ * Paper account for the signed-in user.
+ *
+ * Reads use the Supabase client and are filtered again by RLS. Writes do not:
+ * cash and positions change only through `place_trade` and `set_paper_cash`.
+ * Those functions run as the table owner, so a direct `.update()` on
+ * `portfolios` is revoked and would not be a safe API even if it were granted.
+ *
+ * PostgREST sends Postgres `numeric` columns back as strings. `asNumber`
+ * coerces them before they enter React state. `funded` is money the user put
+ * in or took out; trading P&L is equity minus funded, so a practice deposit
+ * is not shown as profit.
+ */
 export function PortfolioProvider({ children }) {
   const { user } = useAuth()
   const [cash, setCash] = useState(null)
