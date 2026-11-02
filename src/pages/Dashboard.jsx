@@ -54,15 +54,13 @@ export default function Dashboard() {
     )
 
   return (
-    <section className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-      <div className="contents lg:block">
-        <div className="order-1">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('dash.kicker')}</p>
-          <h1 className="mt-1 text-2xl font-semibold">{t('dash.title')}</h1>
-          <p className="mt-2 text-sm text-muted">{t('dash.hint')}</p>
-        </div>
-        <div className="order-3 lg:mt-6">{cardGrid}</div>
+    <section className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-x-4 lg:gap-y-6">
+      <div className="order-1 lg:order-none lg:col-span-2">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">{t('dash.kicker')}</p>
+        <h1 className="mt-1 text-2xl font-semibold">{t('dash.title')}</h1>
+        <p className="mt-2 text-sm text-muted">{t('dash.hint')}</p>
       </div>
+      <div className="order-3 min-w-0 lg:order-none">{cardGrid}</div>
       <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none">
         <PortfolioDonut />
         <PortfolioPerformance />
