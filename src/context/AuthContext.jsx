@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 const AuthContext = createContext(null)
 
-function mapUser(authUser) {
+function mapUser(authUser, role = 'user') {
   if (!authUser) return null
 
   const metadata = authUser.user_metadata ?? {}
@@ -13,7 +13,14 @@ function mapUser(authUser) {
     id: authUser.id,
     email: authUser.email ?? '',
     name,
+    role: role === 'admin' ? 'admin' : 'user',
   }
+}
+
+async function fetchRole(userId) {
+  const { data, error } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle()
+  if (error || data?.role !== 'admin') return 'user'
+  return 'admin'
 }
 
 export function AuthProvider({ children }) {
@@ -22,18 +29,34 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true
+    let request = 0
+
+    async function hydrate(session) {
+      const current = ++request
+      const authUser = session?.user ?? null
+      if (!authUser) {
+        if (!active || current !== request) return
+        setUser(null)
+        setReady(true)
+        return
+      }
+
+      const role = await fetchRole(authUser.id)
+      if (!active || current !== request) return
+      setUser(mapUser(authUser, role))
+      setReady(true)
+    }
 
     supabase.auth.getSession().then(({ data }) => {
-      if (!active) return
-      setUser(mapUser(data.session?.user ?? null))
-      setReady(true)
+      void hydrate(data.session)
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(mapUser(session?.user ?? null))
-      setReady(true)
+      setTimeout(() => {
+        void hydrate(session)
+      }, 0)
     })
 
     return () => {
@@ -46,6 +69,7 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       ready,
+      isAdmin: user?.role === 'admin',
       async login(email, password) {
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),

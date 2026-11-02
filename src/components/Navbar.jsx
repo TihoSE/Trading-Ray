@@ -40,6 +40,9 @@ export default function Navbar({ onMenuClick }) {
           <div className="hidden min-w-0 pr-1 sm:block">
             <p className="max-w-[9rem] truncate text-sm font-medium leading-tight">{user.name}</p>
             <p className="max-w-[9rem] truncate text-xs text-muted">{user.email}</p>
+            {user.role === 'admin' ? (
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Admin</p>
+            ) : null}
           </div>
           <button
             type="button"

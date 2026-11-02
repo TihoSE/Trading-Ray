@@ -1,13 +1,16 @@
 import { LayoutDashboard, LineChart, Settings, X } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/watchlist', label: 'Watchlist', icon: LineChart },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ]
 
 export default function Sidebar({ open, onClose }) {
+  const { isAdmin } = useAuth()
+  const visibleLinks = links.filter((link) => !link.adminOnly || isAdmin)
   return (
     <>
       {open ? (
@@ -45,7 +48,7 @@ export default function Sidebar({ open, onClose }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {links.map(({ to, label, icon: Icon }) => (
+          {visibleLinks.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}

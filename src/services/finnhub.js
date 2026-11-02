@@ -1,5 +1,41 @@
 const QUOTE_URL = 'https://finnhub.io/api/v1/quote'
 const SEARCH_URL = 'https://finnhub.io/api/v1/search'
+const CANDLE_URL = 'https://finnhub.io/api/v1/stock/candle'
+
+export const CANDLE_TIMEFRAMES = [
+  {
+    id: '1H',
+    label: '1H',
+    resolution: '5',
+    seconds: 60 * 60,
+    stepSeconds: 5 * 60,
+    caption: '5-minute closes',
+  },
+  {
+    id: '1D',
+    label: '1D',
+    resolution: '60',
+    seconds: 24 * 60 * 60,
+    stepSeconds: 60 * 60,
+    caption: 'Hourly closes',
+  },
+  {
+    id: '1W',
+    label: '1W',
+    resolution: '60',
+    seconds: 7 * 24 * 60 * 60,
+    stepSeconds: 60 * 60,
+    caption: 'Hourly closes',
+  },
+  {
+    id: '1M',
+    label: '1M',
+    resolution: 'D',
+    seconds: 30 * 24 * 60 * 60,
+    stepSeconds: 24 * 60 * 60,
+    caption: 'Daily closes',
+  },
+]
 
 export const POPULAR_SYMBOLS = [
   { symbol: 'NVDA', name: 'NVIDIA' },
@@ -190,6 +226,100 @@ export async function searchSymbols(query) {
 
 function symbolSeed(symbol) {
   return [...symbol].reduce((sum, char) => sum + char.charCodeAt(0), 0)
+}
+
+export function getCandleTimeframe(timeframe) {
+  return CANDLE_TIMEFRAMES.find((item) => item.id === timeframe) ?? CANDLE_TIMEFRAMES[1]
+}
+
+function formatCandleLabel(date, timeframe) {
+  if (timeframe === '1H' || timeframe === '1D') {
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+
+  if (timeframe === '1W') {
+    return date.toLocaleString('en-US', { weekday: 'short', hour: 'numeric' })
+  }
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+export function simulateCandles(quote, timeframe = '1D') {
+  const config = getCandleTimeframe(timeframe)
+  const ticker = quote.symbol.toUpperCase()
+  const seed = symbolSeed(ticker)
+  const end = Number(quote.current) || 0
+  const change = Number(quote.change) || 0
+  const direction = change >= 0 ? 1 : -1
+  const rawSpan = Math.abs(change) * (config.seconds / (24 * 60 * 60)) * 0.45
+  const span = Math.min(Math.max(rawSpan, end * 0.012), end * 0.12 || 1)
+  const count = Math.max(Math.round(config.seconds / config.stepSeconds), 2)
+  const endMs = Math.floor(Date.now() / (config.stepSeconds * 1000)) * config.stepSeconds * 1000
+  const points = []
+
+  for (let index = 0; index < count; index += 1) {
+    const offsetSteps = count - 1 - index
+    const date = new Date(endMs - offsetSteps * config.stepSeconds * 1000)
+    const progress = index / Math.max(count - 1, 1)
+    const wave = Math.sin((seed / 12 + offsetSteps) * 0.85) * span * 0.35
+    const ripple = Math.cos((seed / 7 + offsetSteps) * 1.4) * span * 0.18
+    let price = end - direction * span * (1 - progress) + wave + ripple
+    if (index === count - 1) price = end
+
+    points.push({
+      time: date.toISOString(),
+      label: formatCandleLabel(date, config.id),
+      price: +Math.max(price, 0.01).toFixed(2),
+    })
+  }
+
+  return points
+}
+
+function candlesFromPayload(payload, timeframe) {
+  if (payload?.s !== 'ok' || !Array.isArray(payload.c) || !Array.isArray(payload.t) || payload.c.length === 0) {
+    return null
+  }
+
+  return payload.t
+    .map((timestamp, index) => {
+      const close = Number(payload.c[index])
+      if (!Number.isFinite(close) || close <= 0) return null
+      const date = new Date(Number(timestamp) * 1000)
+      return {
+        time: date.toISOString(),
+        label: formatCandleLabel(date, timeframe),
+        price: +close.toFixed(2),
+      }
+    })
+    .filter(Boolean)
+}
+
+export async function fetchCandleSeries(quote, timeframe = '1D') {
+  const config = getCandleTimeframe(timeframe)
+  const mocked = () => ({ points: simulateCandles(quote, config.id), source: 'mock' })
+  const token = getApiKey()
+
+  if (!token) return mocked()
+
+  const to = Math.floor(Date.now() / 1000)
+  const from = to - config.seconds
+
+  try {
+    const response = await fetch(
+      `${CANDLE_URL}?symbol=${encodeURIComponent(quote.symbol)}&resolution=${encodeURIComponent(config.resolution)}&from=${from}&to=${to}&token=${encodeURIComponent(token)}`,
+    )
+
+    if (!response.ok) return mocked()
+
+    const payload = await response.json()
+    const points = candlesFromPayload(payload, config.id)
+    if (!points?.length) return mocked()
+
+    return { points, source: 'live' }
+  } catch {
+    return mocked()
+  }
 }
 
 export function simulateHistory(quote, days = 30) {

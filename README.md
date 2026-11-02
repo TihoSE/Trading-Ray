@@ -16,4 +16,10 @@ Copy `.env.example` to `.env` and set:
 
 If the Finnhub key is missing or the request fails, the app uses mock prices.
 
-Auth uses Supabase (`signUp` / `signInWithPassword`). Create the `watchlist` table with `supabase/schema.sql` in the SQL editor so starred tickers persist per user.
+Auth uses Supabase (`signUp` / `signInWithPassword`). Run `supabase/schema.sql` in the SQL editor so the watchlist and `profiles` table exist. New accounts get the `user` role. Promote your own account once:
+
+```sql
+update public.profiles set role = 'admin' where email = 'you@example.com';
+```
+
+Only an admin can open Settings and see the Finnhub key. A normal user cannot change that role from the app.

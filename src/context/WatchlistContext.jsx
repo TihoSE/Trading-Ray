@@ -19,7 +19,7 @@ export function WatchlistProvider({ children }) {
 
       const { data, error } = await supabase
         .from('watchlist')
-        .select('symbol')
+        .select('ticker')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
 
@@ -31,7 +31,7 @@ export function WatchlistProvider({ children }) {
       }
 
       setWatchlist([
-        ...new Set((data ?? []).map((row) => String(row.symbol).toUpperCase())),
+        ...new Set((data ?? []).map((row) => String(row.ticker).toUpperCase())),
       ])
     }
 
@@ -61,7 +61,7 @@ export function WatchlistProvider({ children }) {
             .from('watchlist')
             .delete()
             .eq('user_id', user.id)
-            .eq('symbol', ticker)
+            .eq('ticker', ticker)
 
           if (error) {
             setWatchlist((current) => [...current, ticker])
@@ -72,7 +72,7 @@ export function WatchlistProvider({ children }) {
 
         const { error } = await supabase.from('watchlist').insert({
           user_id: user.id,
-          symbol: ticker,
+          ticker,
         })
 
         if (error) {

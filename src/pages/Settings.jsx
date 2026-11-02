@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useAuth } from '../context/AuthContext'
 import { getApiKey } from '../services/finnhub'
 
-export default function Settings() {
+function ApiKeyForm() {
   const [key, setKey] = useState(() => getApiKey())
   const [saved, setSaved] = useState(false)
 
@@ -45,4 +46,22 @@ export default function Settings() {
       </form>
     </section>
   )
+}
+
+export default function Settings() {
+  const { isAdmin } = useAuth()
+
+  if (!isAdmin) {
+    return (
+      <section className="max-w-xl">
+        <p className="text-xs uppercase tracking-[0.2em] text-muted">Preferences</p>
+        <h1 className="mt-1 text-2xl font-semibold">Settings</h1>
+        <p className="mt-4 rounded-2xl border border-line bg-panel p-5 text-sm text-muted">
+          Only an admin can view or change the Finnhub API key.
+        </p>
+      </section>
+    )
+  }
+
+  return <ApiKeyForm />
 }
