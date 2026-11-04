@@ -1,5 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { useLocale } from './LocaleContext'
 import { supabase } from '../lib/supabase'
+
+const IDLE_MS = 15 * 60 * 1000
+const IDLE_CHECK_MS = 30 * 1000
 
 const AuthContext = createContext(null)
 
@@ -33,6 +38,9 @@ async function fetchProfile(userId) {
 }
 
 export function AuthProvider({ children }) {
+  const { t } = useLocale()
+  const tRef = useRef(t)
+  tRef.current = t
   const [user, setUser] = useState(null)
   const [ready, setReady] = useState(false)
 
@@ -77,6 +85,44 @@ export function AuthProvider({ children }) {
       subscription.unsubscribe()
     }
   }, [])
+
+  useEffect(() => {
+    if (!user?.id) return undefined
+
+    let lastActivity = Date.now()
+    let signingOut = false
+
+    function markActive() {
+      lastActivity = Date.now()
+    }
+
+    async function signOutIfIdle() {
+      if (signingOut || Date.now() - lastActivity < IDLE_MS) return
+      signingOut = true
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        signingOut = false
+        return
+      }
+      toast(tRef.current('auth.idle'))
+    }
+
+    const events = ['pointerdown', 'keydown', 'touchstart']
+    events.forEach((name) => window.addEventListener(name, markActive, { passive: true }))
+    window.addEventListener('scroll', markActive, { capture: true, passive: true })
+    document.addEventListener('visibilitychange', signOutIfIdle)
+
+    const timer = window.setInterval(() => {
+      void signOutIfIdle()
+    }, IDLE_CHECK_MS)
+
+    return () => {
+      events.forEach((name) => window.removeEventListener(name, markActive))
+      window.removeEventListener('scroll', markActive, { capture: true })
+      document.removeEventListener('visibilitychange', signOutIfIdle)
+      window.clearInterval(timer)
+    }
+  }, [user?.id])
 
   const value = useMemo(
     () => ({
